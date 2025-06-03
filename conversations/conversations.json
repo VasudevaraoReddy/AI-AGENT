@@ -1,0 +1,219 @@
+{
+  "test-user-123": {
+    "csp": "aws",
+    "history": [
+      {
+        "role": "human",
+        "content": "I want to create a Virtual Machine",
+        "timestamp": "03/06/2025, 06:12:40 pm"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "response": "I found the configuration for Virtual Machine on AWS. Let me help you provision it.",
+          "delegated_to": "provision_agent_tool",
+          "tool_result": {
+            "response": "I found the configuration for Virtual Machine on AWS. Let me help you provision it.",
+            "status": "success",
+            "message": "Please provide the instance name, AMI ID, instance type, and key name to proceed with provisioning the Virtual Machine on AWS.",
+            "service_config": {
+              "id": "virtual-machine-aws",
+              "name": "Virtual Machine",
+              "template": "virtualmachine",
+              "price": 0,
+              "cloud": "aws",
+              "available": true,
+              "requiredFields": [
+                {
+                  "type": "input",
+                  "fieldId": "instanceName",
+                  "fieldName": "Instance Name",
+                  "fieldValue": "",
+                  "fieldTypeValue": "String",
+                  "dependent": false,
+                  "dependentON": "",
+                  "dependentFOR": "",
+                  "exampleValue": "vm-prod-001",
+                  "explanation": "Use a descriptive name for the instance, including its purpose ('prod') and a unique identifier ('001'). This helps with organization and troubleshooting."
+                },
+                {
+                  "type": "input",
+                  "fieldId": "amiId",
+                  "fieldName": "AMI ID",
+                  "fieldValue": "",
+                  "fieldTypeValue": "String",
+                  "dependent": false,
+                  "dependentON": "",
+                  "dependentFOR": "",
+                  "exampleValue": "ami-0c94855ba3c5023c2",
+                  "explanation": "Use an official Amazon Machine Image (AMI) ID from the AWS Marketplace or a trusted source. This ensures you're using a secure and supported image."
+                },
+                {
+                  "type": "input",
+                  "fieldId": "instanceType",
+                  "fieldName": "Instance Type",
+                  "fieldValue": "",
+                  "fieldTypeValue": "String",
+                  "dependent": false,
+                  "dependentON": "",
+                  "dependentFOR": "",
+                  "exampleValue": "t2.micro",
+                  "explanation": "Choose an instance type that balances performance and cost. For development or small production workloads, a t2.micro is a good starting point."
+                },
+                {
+                  "type": "input",
+                  "fieldId": "keyName",
+                  "fieldName": "Key Name",
+                  "fieldValue": "",
+                  "fieldTypeValue": "String",
+                  "dependent": false,
+                  "dependentON": "",
+                  "dependentFOR": "",
+                  "exampleValue": "vm-prod-key-2023",
+                  "explanation": "Use a descriptive name for the key, including its purpose and a unique identifier. Rotate this key regularly to maintain security best practices."
+                }
+              ]
+            },
+            "detected": {
+              "service": "Virtual Machine",
+              "csp": "AWS"
+            }
+          },
+          "metadata": {
+            "csp": "AWS",
+            "original_csp": "AWS",
+            "userId": "test-user-123"
+          }
+        },
+        "timestamp": "03/06/2025, 06:12:40 pm"
+      },
+      {
+        "role": "human",
+        "content": "I want to create a Secret Manager",
+        "timestamp": "03/06/2025, 06:13:07 pm"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "response": "The service Secret Manager is not currently available for AWS. This service might be added in a future update. Please check back later or try a different service.",
+          "delegated_to": "provision_agent_tool",
+          "tool_result": {
+            "response": "The service Secret Manager is not currently available for AWS. This service might be added in a future update. Please check back later or try a different service.",
+            "status": "service_not_found",
+            "message": "Service not currently available",
+            "details": {
+              "requested_service": "Secret Manager",
+              "provider": "AWS"
+            },
+            "suggestion": "This service might be added in a future update. Please check back later or try a different service."
+          },
+          "metadata": {
+            "csp": "AWS",
+            "original_csp": "AWS",
+            "userId": "test-user-123"
+          }
+        },
+        "timestamp": "03/06/2025, 06:13:07 pm"
+      },
+      {
+        "role": "human",
+        "content": "Tell me about India",
+        "timestamp": "03/06/2025, 06:13:34 pm"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "response": "I am a cloud computing specialist. I can only assist with questions about cloud computing, cloud providers, and cloud technologies. Please ask me about cloud-related topics.",
+          "delegated_to": "general_cloud_agent_tool",
+          "tool_result": {
+            "status": "out_of_scope",
+            "message": "Query is not related to cloud computing",
+            "details": {
+              "topic": "non_cloud",
+              "csp": "AWS",
+              "userId": "test-user-123",
+              "suggestions": [
+                "Ask about cloud services and features",
+                "Ask about cloud providers (AWS, Azure, GCP, Oracle)",
+                "Ask about cloud computing concepts",
+                "Ask about cloud architecture and best practices"
+              ]
+            }
+          },
+          "metadata": {
+            "csp": "AWS",
+            "original_csp": "AWS",
+            "userId": "test-user-123"
+          }
+        },
+        "timestamp": "03/06/2025, 06:13:34 pm"
+      },
+      {
+        "role": "human",
+        "content": "Tell me about India",
+        "timestamp": "03/06/2025, 06:14:13 pm"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "response": "I am a cloud computing specialist. I can only assist with questions about cloud computing, cloud providers, and cloud technologies. Please ask me about cloud-related topics.",
+          "delegated_to": "general_cloud_agent_tool",
+          "tool_result": {
+            "status": "out_of_scope",
+            "message": "Query is not related to cloud computing",
+            "details": {
+              "topic": "non_cloud",
+              "csp": "AWS",
+              "userId": "test-user-123",
+              "suggestions": [
+                "Ask about cloud services and features",
+                "Ask about cloud providers (AWS, Azure, GCP, Oracle)",
+                "Ask about cloud computing concepts",
+                "Ask about cloud architecture and best practices"
+              ]
+            }
+          },
+          "metadata": {
+            "csp": "AWS",
+            "original_csp": "AWS",
+            "userId": "test-user-123"
+          }
+        },
+        "timestamp": "03/06/2025, 06:14:13 pm"
+      },
+      {
+        "role": "human",
+        "content": "Tell me about India",
+        "timestamp": "03/06/2025, 06:15:21 pm"
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "response": "I am a cloud computing specialist. I can only assist with questions about cloud computing, cloud providers, and cloud technologies. Please ask me about cloud-related topics.",
+          "delegated_to": "general_cloud_agent_tool",
+          "tool_result": {
+            "status": "out_of_scope",
+            "message": "Query is not related to cloud computing",
+            "details": {
+              "topic": "non_cloud",
+              "csp": "AWS",
+              "userId": "test-user-123",
+              "suggestions": [
+                "Ask about cloud services and features",
+                "Ask about cloud providers (AWS, Azure, GCP, Oracle)",
+                "Ask about cloud computing concepts",
+                "Ask about cloud architecture and best practices"
+              ]
+            }
+          },
+          "metadata": {
+            "csp": "AWS",
+            "original_csp": "AWS",
+            "userId": "test-user-123"
+          }
+        },
+        "timestamp": "03/06/2025, 06:15:21 pm"
+      }
+    ]
+  }
+}
