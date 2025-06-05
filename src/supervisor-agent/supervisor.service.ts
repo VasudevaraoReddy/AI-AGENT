@@ -69,6 +69,166 @@ export class SupervisorAgentService {
     }
   }
 
+  private async generateSupervisorResponse(
+    toolObservation: any,
+    executedTool: string,
+  ): Promise<string> {
+    try {
+      // Skip LLM processing for general cloud agent responses
+      if (executedTool === 'general_cloud_agent_tool') {
+        return toolObservation.response;
+      }
+
+      const llm = new ChatOllama({
+        model: 'llama3.1',
+        baseUrl: 'https://codeprism-ai.com',
+      });
+
+      // Get tool-specific prompt
+      const systemPrompt = this.getToolSpecificPrompt(executedTool);
+
+      const toolResponseStr = JSON.stringify(toolObservation, null, 2);
+
+      const result = await llm.invoke([
+        new SystemMessage(systemPrompt),
+        new HumanMessage(
+          `Please analyze this response and generate an informative summary:\n${toolResponseStr}`,
+        ),
+      ]);
+
+      const supervisorResponse = String(result.content || '').trim();
+
+      // Fallback to original response if LLM fails to generate a meaningful one
+      if (!supervisorResponse || supervisorResponse.length < 10) {
+        console.warn(
+          'LLM generated an empty or too short response, using fallback',
+        );
+        return toolObservation.response || 'Request processed successfully';
+      }
+
+      return supervisorResponse;
+    } catch (error) {
+      console.error('Error generating supervisor response:', error);
+      return toolObservation.response || 'Request processed successfully';
+    }
+  }
+
+  private getToolSpecificPrompt(executedTool: string): string {
+    const baseRules = `
+RULES:
+1. Keep the tone professional but conversational
+2. Be specific about the results
+3. If there are issues or errors, explain them clearly
+4. Do not include any words like "Here is the tool response" in your summary
+5. Do not include phrases like "Here's a summary" or "Tool response shows"
+6. Start directly with the key points`;
+
+    switch (executedTool) {
+      case 'recommendations_agent_tool':
+        return `You are analyzing cloud infrastructure recommendations.
+
+${baseRules}
+
+For Recommendations:
+1. Start with the total number of recommendations found
+2. Group recommendations by:
+   - Category (Security, Performance, Cost, etc.)
+   - Impact level (High, Medium, Low)
+3. For each recommendation, highlight:
+   - The specific issue
+   - The affected resource
+   - The suggested solution
+4. If no recommendations found:
+   - Clearly state no recommendations for the specific service
+   - List the services that were analyzed
+5. Always use the exact service name from detected.service
+6. Format in bullet points for easy reading
+
+Format: Return only the response text, no JSON or special formatting.`;
+
+      case 'provision_agent_tool':
+        return `You are analyzing cloud resource provisioning results.
+
+${baseRules}
+
+For Provisioning:
+1. Start with the provisioning status (success/failure)
+2. Include:
+   - Resource type and name
+   - Configuration details
+   - Any important settings or parameters
+3. For successful provisions:
+   - List the key configurations applied
+   - Any next steps or recommendations
+4. For failures:
+   - Clear explanation of what went wrong
+   - Suggested remediation steps
+5. Format in bullet points for easy reading
+
+Format: Return only the response text, no JSON or special formatting.`;
+
+      default:
+        return `You are a cloud infrastructure supervisor that analyzes and summarizes tool responses.
+
+${baseRules}
+
+Additional Rules:
+1. Include relevant numbers and statistics when available
+2. Generate summary in points format
+3. Focus on key outcomes and important details
+
+Format: Return only the response text, no JSON or special formatting.`;
+    }
+  }
+
+  private parseToolObservation(observation: any, userMessage: string): any {
+    console.log('Observation:', observation);
+    try {
+      // If observation is a string, try to parse it
+      if (typeof observation === 'string') {
+        try {
+          observation = JSON.parse(observation);
+        } catch (e) {
+          console.error('Error parsing observation:', e);
+          return {
+            response: observation,
+            tool_response: {
+              status: 'success',
+              message: 'Processed successfully',
+            },
+          };
+        }
+      }
+
+      // If observation is from provision agent
+      if (observation.tool_response?.status) {
+        return {
+          response: observation.response || 'Request processed successfully',
+          tool_response: observation.tool_response,
+        };
+      }
+
+      // Default format for other cases
+      return {
+        response: observation.response || observation.toString(),
+        tool_response: {
+          status: 'success',
+          message: 'Processed successfully',
+          ...observation, // Include any additional data from the observation
+        },
+      };
+    } catch (error) {
+      console.error('Error in parseToolObservation:', error);
+      return {
+        response: 'Error processing the response',
+        tool_response: {
+          status: 'error',
+          message: error.message,
+        },
+      };
+    }
+  }
+
   public async processQuery(
     message: string,
     userId?: string,
@@ -171,9 +331,16 @@ export class SupervisorAgentService {
         result.intermediateSteps?.[0]?.action?.tool || 'unknown';
       let toolObservation = this.parseToolObservation(
         result.intermediateSteps[0].observation,
+        message, // Pass the user message to help with service detection
       );
 
       success = true;
+
+      // Generate supervisor response using LLM
+      const supervisorResponse = await this.generateSupervisorResponse(
+        toolObservation,
+        executedTool,
+      );
 
       // Save conversation context
       const outputResponse = toolObservation.response || result.output;
@@ -192,6 +359,7 @@ export class SupervisorAgentService {
 
       return {
         response: outputResponse,
+        supervisorResponse: supervisorResponse,
         delegated_to: executedTool,
         tool_result: toolObservation.tool_response || toolObservation,
         metadata: {
@@ -217,24 +385,6 @@ export class SupervisorAgentService {
         executionTime,
         success,
       );
-    }
-  }
-
-  private parseToolObservation(observation: any): any {
-    try {
-      return typeof observation === 'string'
-        ? JSON.parse(observation)
-        : observation;
-    } catch (error) {
-      console.error('Error parsing tool observation:', error);
-      return {
-        response: observation,
-        tool_response: {
-          status: 'success',
-          message: 'Processed successfully but response was not in JSON format',
-          service: null,
-        },
-      };
     }
   }
 

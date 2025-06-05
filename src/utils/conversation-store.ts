@@ -65,7 +65,7 @@ export class ConversationManager {
         try {
             console.log('Reading conversations from:', this.filePath);
             const data = fs.readFileSync(this.filePath, 'utf8');
-            console.log('Raw file content:', data);
+            // console.log('Raw file content:', data);
             return JSON.parse(data);
         } catch (error) {
             console.error('Error reading conversations:', error);

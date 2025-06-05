@@ -73,29 +73,36 @@ async function handleProvisionAgent(input: StandardizedInput) {
       agent_scratchpad: ""
     });
 
-    // Handle the result based on its type
-    let parsedOutput;
-    if (typeof result.output === 'string') {
-      try {
-        parsedOutput = JSON.parse(result.output);
-      } catch (parseError) {
-        console.error('Error parsing result output:', parseError);
-        // If parsing fails, wrap the output in a standard format
-        parsedOutput = {
-          response: result.output,
-          tool_response: {
-            status: 'success',
-            message: 'Processed successfully',
-            service: null
-          }
-        };
-      }
-    } else {
-      // If output is already an object, use it directly
-      parsedOutput = result.output;
+    // Extract the tool response from intermediateSteps if available
+    const toolResponse = result.intermediateSteps?.[0]?.observation;
+    
+    // Parse the tool response if it's a string
+    let parsedToolResponse;
+    try {
+      parsedToolResponse = typeof toolResponse === 'string' 
+        ? JSON.parse(toolResponse)
+        : toolResponse;
+    } catch (error) {
+      console.error('Error parsing tool response:', error);
+      parsedToolResponse = {
+        response: toolResponse,
+        tool_response: {
+          status: 'success',
+          message: 'Processed successfully',
+          service: null
+        }
+      };
     }
 
-    return parsedOutput;
+    // Ensure the response follows the expected format
+    return {
+      response: parsedToolResponse.response || result.output,
+      tool_response: parsedToolResponse.tool_response || {
+        status: 'success',
+        message: 'Request processed successfully',
+        service: null
+      }
+    };
   } catch (error) {
     console.error('Error in provision agent:', error);
     return {
