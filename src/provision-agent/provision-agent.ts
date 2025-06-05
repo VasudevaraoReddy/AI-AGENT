@@ -1,6 +1,6 @@
 import { ChatOllama } from '@langchain/ollama';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import provisionTool from './tools/provision.tool';
+import serviceConfigTool from './tools/serciveConfig.tool';
 import deployTool from './tools/deploy.tool';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
@@ -44,7 +44,7 @@ const llm = new ChatOllama({
 
 const provisionAssistant = createToolCallingAgent({
   llm,
-  tools: [provisionTool, deployTool],
+  tools: [serviceConfigTool, deployTool],
   prompt: ChatPromptTemplate.fromMessages([
     ["system", PROVISION_AGENT_PROMPT],
     ["human", "{input}"],
@@ -56,7 +56,7 @@ const provisionAssistant = createToolCallingAgent({
 
 const provisionAgentExecutor = new AgentExecutor({
   agent: provisionAssistant,
-  tools: [provisionTool, deployTool],
+  tools: [serviceConfigTool, deployTool],
   maxIterations: 3,
   returnIntermediateSteps: true
 });

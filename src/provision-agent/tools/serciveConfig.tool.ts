@@ -142,7 +142,7 @@ async function generateExampleValues(service: any, csp: string): Promise<any> {
     }
 }
 
-const provisionTool = tool(
+const serviceConfigTool = tool(
     async ({ csp, message }) => {
         console.log('In provision tool:', { csp, message });
         try {
@@ -250,4 +250,4 @@ const provisionTool = tool(
     },
 );
 
-export default provisionTool;
+export default serviceConfigTool;
