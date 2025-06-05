@@ -31,7 +31,7 @@ IMPORTANT RULES:
    - If general question -> general_cloud_agent_tool
 
 5. Input Handling:
-   - Pass the message, csp, and userId to the selected tool
+   - Pass the message, csp, userId and payload to the selected tool
    - DO NOT modify the input in any way
    - Preserve the exact wording and intent of the user's request
 

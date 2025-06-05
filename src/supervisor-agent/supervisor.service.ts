@@ -40,17 +40,20 @@ export class SupervisorAgentService {
       const cspResult = await llm.invoke([
         new SystemMessage(`
   You are a cloud provider detector. Extract the cloud provider mentioned in the message.
-  
-  RULES:
-  - Only return one of: AWS, AZURE, GCP
-  - Return NULL if no provider is clearly mentioned
-  - Return only the provider name, in uppercase, with no quotes or extra text
-  
-  Examples:
-  "Deploy in Azure" -> AZURE  
-  "Create an instance in AWS" -> AWS  
-  "Setup a VM on GCP" -> GCP  
-  "Create a VM" -> NULL
+
+    RULES:
+    - Return one of AWS, AZURE, GCP, or NULL
+    - Return NULL if no provider or multiple providers are clearly mentioned
+    - Return only the provider name, uppercase, no quotes or extra text
+    - If you are not sure about the provider, return NULL
+
+    Examples:
+    "Deploy in Azure" -> AZURE
+    "Create an instance in AWS" -> AWS
+    "Setup a VM on GCP" -> GCP
+    "Create a VM" -> NULL
+    "Deploy on AWS and Azure" -> NULL
+    "I want a VM" -> NULL
   `),
         new HumanMessage(message),
       ]);
@@ -233,6 +236,7 @@ Format: Return only the response text, no JSON or special formatting.`;
     message: string,
     userId?: string,
     providedCsp?: string,
+    extraPayload?: Record<string, any>
   ) {
     const startTime = Date.now();
     let success = false;
@@ -245,10 +249,11 @@ Format: Return only the response text, no JSON or special formatting.`;
 
       // Detect CSP from message
       const detectedCsp = await this.detectCSP(cleanLlm, message);
+      console.log('Detected CSP:', detectedCsp);
       const effectiveCsp =
         providedCsp?.toUpperCase() || detectedCsp || 'general';
 
-      // ❌ Enforce CSP mismatch check here (before invoking agent)
+      //Enforce CSP mismatch check here (before invoking agent)
       if (
         providedCsp &&
         detectedCsp &&
@@ -296,7 +301,7 @@ Format: Return only the response text, no JSON or special formatting.`;
           ['placeholder', '{chat_history}'],
           [
             'human',
-            `User Query: {input}\nCloud Provider: {csp}\nUser ID: {userId}`,
+            `User Query: {input}\nCloud Provider: {csp}\nUser ID: {userId}\nPayload: {payload}`,
           ],
           ['placeholder', '{agent_scratchpad}'],
         ]),
@@ -312,11 +317,13 @@ Format: Return only the response text, no JSON or special formatting.`;
 
       const chatHistory = await this.memory.loadMemoryVariables({});
 
+      console.log('Extra payload:', extraPayload);
       // Process the query
       const result = await agentExecutor.invoke({
         input: message,
         csp: effectiveCsp,
         userId: userId || 'anonymous',
+        payload: extraPayload || {},
         chat_history: chatHistory.chat_history || [],
         agent_scratchpad: '',
         metadata: {

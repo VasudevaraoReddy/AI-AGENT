@@ -21,6 +21,15 @@ import { ConversationManager } from './utils/conversation-store';
 import { UserConversation } from './utils/conversation.types';
 import { SupervisorAgentService } from './supervisor-agent/supervisor.service';
 
+// src/dto/process-query.dto.ts
+export class ProcessQueryDto {
+  message: string;
+  userId?: string;
+  csp?: string;
+  payload?: Record<string, any>; // Add any additional optional payload
+}
+
+
 @Controller()
 export class AppController {
   private readonly toolRegistry: ToolRegistry;
@@ -50,9 +59,9 @@ export class AppController {
   }
 
   @Post('/process-query')
-  async processQuery(@Body() body: any) {
+  async processQuery(@Body() body: ProcessQueryDto) {
     console.log('Processing user query:', body);
-    return this.supervisorAgent.processQuery(body.message, body.userId, body.csp);
+    return this.supervisorAgent.processQuery(body.message, body.userId, body.csp, body.payload);
   }
 
   @Post('/metrics')

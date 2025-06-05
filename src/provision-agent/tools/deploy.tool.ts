@@ -1,29 +1,78 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { z } from 'zod';
+import { tool } from '@langchain/core/tools';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 
-export class DeployTool {
-  async deployService({
-    serviceName,
-    csp,
-    userId,
-    formData,
-    template,
-  }: {
-    serviceName: string;
-    csp: string;
-    userId: string;
-    formData: any;
-    template?: string;
-  }) {
+const deployTool = tool(
+  async ({ serviceName, payload, csp, userId }) => {
+    // If no payload is provided or it's the default message
+    if (!payload || payload === "No payload provided") {
+      return JSON.stringify({
+        response: `Cannot deploy without configuration data. Please provide the required configuration values.`,
+        tool_response: {
+          status: 'error',
+          message: 'Missing configuration data',
+          details: {
+            status: 'error',
+            error: 'Configuration data is required for deployment',
+            provider: csp,
+            service: serviceName,
+          },
+        },
+      });
+    }
+
+    // Parse payload if it's a string
+    let parsedPayload;
     try {
-      console.log('Initiating deployment:', { serviceName, csp, userId });
+      if (typeof payload === 'string') {
+        // Clean the string if it's malformed
+        const cleanedPayload = payload.replace(/\\"/g, '"').replace(/^"|"$/g, '');
+        parsedPayload = JSON.parse(cleanedPayload);
+      } else {
+        parsedPayload = payload;
+      }
+    } catch (error) {
+      console.error('Payload parsing error:', error);
+      return JSON.stringify({
+        response: `Invalid payload format. Please provide a valid configuration object.`,
+        tool_response: {
+          status: 'error',
+          message: 'Invalid payload format',
+          details: {
+            status: 'error',
+            error: 'Payload must be a valid JSON object',
+            provider: csp,
+            service: serviceName,
+          },
+        },
+      });
+    }
 
-      // Generate a unique deployment ID
+    const formData = parsedPayload?.formData || {};
+    const template = parsedPayload?.template;
+    
+    // Basic input validation
+    if (!formData || Object.keys(formData).length === 0) {
+      return JSON.stringify({
+        response: `Cannot deploy without configuration data. Please provide the required configuration values.`,
+        tool_response: {
+          status: 'error',
+          message: 'Missing or empty configuration data',
+          details: {
+            status: 'error',
+            error: 'Configuration data is required for deployment',
+            provider: csp,
+            service: serviceName,
+          },
+        },
+      });
+    }
+
+    try {
+      console.log('Initiating deployment:', { serviceName, csp, userId, formData });
+
       const deploymentId = uuidv4();
-
-      // Prepare the deployment request
       const deploymentRequest = {
         deploymentId,
         userId,
@@ -36,72 +85,51 @@ export class DeployTool {
         timestamp: new Date().toISOString(),
       };
 
-      // Call your deployment API (replace with your actual API endpoint)
-    //   const response = await axios.post(
-    //     'http://localhost:3001/deployments/create',
-    //     deploymentRequest,
-    //   );
+      // Optional: call actual deployment API
+      // const response = await axios.post('http://localhost:3001/deployments/create', deploymentRequest);
 
-      return {
-        success: true,
-        deploymentId,
-        message: `Successfully initiated deployment of ${serviceName}`,
-        details: {
-          status: 'in_progress',
-          provider: csp,
-          service: serviceName,
-          configuration: formData,
-          deploymentId,
-        //   ...response.data,
+      return JSON.stringify({
+        response: `Deployment of ${serviceName} has been initiated successfully.`,
+        tool_response: {
+          status: 'success',
+          message: `Successfully initiated deployment of ${serviceName}`,
+          details: {
+            status: 'in_progress',
+            provider: csp,
+            service: serviceName,
+            configuration: formData,
+            deploymentId,
+            // ...response.data,
+          },
         },
-      };
-    } catch (error) {
+      });
+    } catch (error: any) {
       console.error('Deployment error:', error);
-      return {
-        success: false,
-        message: `Failed to deploy ${serviceName}: ${error.message}`,
-        details: {
+      return JSON.stringify({
+        response: `Failed to deploy ${serviceName}: ${error.message}`,
+        tool_response: {
           status: 'error',
-          error: error.message,
-          provider: csp,
-          service: serviceName,
+          message: error.message,
+          details: {
+            status: 'error',
+            error: error.message,
+            provider: csp,
+            service: serviceName,
+          },
         },
-      };
+      });
     }
-  }
-}
-
-const deployTool = new DynamicStructuredTool({
-  name: 'deploy_service',
-  description: 'Initiates the deployment of a cloud service with the provided configuration.',
-  schema: z.object({
-    serviceName: z.string().describe('The name of the service to deploy'),
-    csp: z.string().describe('The cloud service provider (AWS, Azure, GCP, or Oracle)'),
-    userId: z.string().describe('The ID of the user initiating the deployment'),
-    formData: z.any().describe('The form data containing service configuration parameters'),
-    template: z.string().optional().describe('Optional infrastructure as code template'),
-  }),
-  func: async ({ serviceName, csp, userId, formData, template }) => {
-    const deployTool = new DeployTool();
-    const result = await deployTool.deployService({
-      serviceName,
-      csp,
-      userId,
-      formData,
-      template,
-    });
-
-    return JSON.stringify({
-      response: result.success
-        ? `Deployment of ${serviceName} has been initiated successfully.`
-        : `Failed to deploy ${serviceName}: ${result.message}`,
-      tool_response: {
-        status: result.success ? 'success' : 'error',
-        message: result.message,
-        details: result.details,
-      },
-    });
   },
-});
+  {
+    name: 'deploy_service',
+    description: 'Deploy a cloud service using the given configuration. Requires serviceName, csp, userId, and payload with formData.',
+    schema: z.object({
+      serviceName: z.string().describe('The name of the service to deploy'),
+      userId: z.string().describe('The user ID for the deployment'),
+      csp: z.string().describe('The cloud service provider (AWS, Azure, GCP, or Oracle)'),
+      payload: z.any().describe('Configuration data for the deployment (can be string or object)')
+    }),
+  }
+);
 
-export default deployTool; 
+export default deployTool;

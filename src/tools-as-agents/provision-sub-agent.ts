@@ -4,7 +4,6 @@ import handleProvisionAgent from '../provision-agent/provision-agent';
 import { AgentError } from '../utils/agent-error';
 import { AgentMetrics } from '../utils/agent-metrics';
 
-// Create a tool that wraps the provision agent
 const provisionAgentTool = new DynamicStructuredTool({
   name: 'provision_agent_tool',
   description: 'Use this tool for handling cloud service provisioning requests. This includes getting service configurations and deploying services.',
@@ -15,21 +14,41 @@ const provisionAgentTool = new DynamicStructuredTool({
         message: 'CSP must be one of: AWS, Azure, GCP, Oracle'
       })
       .describe('Cloud Service Provider (AWS, Azure, GCP, Oracle)'),
-    userId: z.string().describe('User ID for the deployment')
+    userId: z.string().describe('User ID for the deployment'),
+    
+    // ✅ Optional payload
+    payload: z.union([z.record(z.any()), z.string()]).optional()
+      .describe('Optional payload for deployment. Can be an object or JSON string.')
   }),
-  func: async ({ message, userId, csp }) => {
+
+  func: async ({ message, userId, csp, payload }) => {
     const startTime = Date.now();
     const metrics = AgentMetrics.getInstance();
     let success = false;
 
     try {
-      console.log('Provision agent tool input:', { message, userId, csp });
+      console.log('Provision agent tool input:', { message, userId, csp, payload });
 
-      // Call the provision agent with the standardized input format
+      let parsedPayload: Record<string, any> | undefined = undefined;
+
+      if (typeof payload === 'string') {
+        try {
+          const temp = JSON.parse(payload);
+          if (typeof temp === 'object' && Object.keys(temp).length > 0) {
+            parsedPayload = temp;
+          }
+        } catch (err) {
+          console.warn('Payload string is not valid JSON:', payload);
+        }
+      } else if (payload && typeof payload === 'object' && Object.keys(payload).length > 0) {
+        parsedPayload = payload;
+      }
+
       const result = await handleProvisionAgent({
         message,
         userId,
-        csp
+        csp,
+        ...(parsedPayload ? { payload: parsedPayload } : {})
       });
 
       success = true;

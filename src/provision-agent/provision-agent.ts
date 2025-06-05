@@ -9,31 +9,53 @@ interface StandardizedInput {
   message: string;
   csp: string;
   userId: string;
+  payload?: any;
 }
 
-const PROVISION_AGENT_PROMPT = `You are a cloud infrastructure provisioning assistant specialized in handling deployment and provisioning requests.
+const PROVISION_AGENT_PROMPT = `
+You are a cloud infrastructure provisioning assistant, specialized in handling deployment and provisioning requests.
 
-IMPORTANT RULES:
-1. Your primary task is to understand the user's request and use the appropriate tool to handle it.
-2. For any provisioning or deployment request:
-   - Use get_service_config tool to find the service configuration
-   - Pass the exact user message and CSP to the tool
-   - Do not modify or rephrase the user's request
+=== OBJECTIVE ===
+Understand the user's request and invoke the appropriate tool without rephrasing or modifying the input.
 
-3. Tool Selection:
-   - Always use get_service_config for initial service lookup
-   - Let the tool handle service identification and matching
+=== TOOL USAGE RULES ===
+1. Use the **get_service_config** tool for:
+   - All initial service configuration lookups
+   - When no payload is provided
+   - When user asks about service information
+   - When payload is empty or undefined
+2. Use the **deploy_service** tool ONLY when:
+   - A payload is explicitly provided in the input
+   - The payload contains actual configuration values
+   - The payload is not empty or undefined
+   - NEVER use deploy_service if payload is undefined, empty, or missing
 
-4. Input Handling:
-   - Pass the user's exact message to tools
-   - Do not try to extract or modify any information
-   - Preserve the exact wording and intent
+=== INPUT HANDLING ===
+- Always pass the **exact user message** and **CSP** to the tool
+- Pass **payload** only when it's explicitly provided and not empty
+- Do not extract, modify, or interpret any part of the user's message
+- Let the tool handle all service identification and matching logic
 
-5. Response Guidelines:
-   - Provide a clear, conversational response to the user
-   - Include the status of the operation (success, error, or service not found)
-   - Include any relevant service configuration details
-   - Keep responses informative but concise`;
+=== TOOL SELECTION LOGIC ===
+- ALWAYS use **get_service_config** when:
+  * payload is not provided
+  * payload is empty
+  * payload is undefined
+  * user is asking for information
+- Use **deploy_service** ONLY when:
+  * payload is explicitly provided
+  * payload contains actual configuration values
+  * payload is not empty
+- For any deployment requests without payload, use get_service_config to return available configuration
+
+=== RESPONSE GUIDELINES ===
+- Respond in a clear and conversational tone
+- Always include:
+  - The status of the operation (e.g., success, error, service not found)
+  - Relevant service configuration details if available
+- If user asks to deploy without payload, respond with service configuration and request for deployment values
+- Keep responses concise but informative
+`;
 
 // Create the provision agent
 const llm = new ChatOllama({
@@ -42,46 +64,71 @@ const llm = new ChatOllama({
   format: 'json',
 });
 
-const provisionAssistant = createToolCallingAgent({
-  llm,
-  tools: [serviceConfigTool, deployTool],
-  prompt: ChatPromptTemplate.fromMessages([
-    ["system", PROVISION_AGENT_PROMPT],
-    ["human", "{input}"],
-    ["human", "CSP: {csp}"],
-    ["human", "User ID: {userId}"],
-    ["placeholder", "{agent_scratchpad}"]
-  ])
-});
-
-const provisionAgentExecutor = new AgentExecutor({
-  agent: provisionAssistant,
-  tools: [serviceConfigTool, deployTool],
-  maxIterations: 3,
-  returnIntermediateSteps: true
-});
+interface InvokeParams {
+  input: string;
+  csp: string;
+  userId: string;
+  agent_scratchpad: string;
+  payload?: any;
+}
 
 // Wrapper function to handle the provision agent execution
 async function handleProvisionAgent(input: StandardizedInput) {
   console.log('Provision agent input:', input);
 
   try {
-    const result = await provisionAgentExecutor.invoke({
+    const hasPayload =
+      input.payload &&
+      typeof input.payload === 'object' &&
+      Object.keys(input.payload).length > 0;
+
+    const tools = hasPayload
+      ? [serviceConfigTool, deployTool]
+      : [serviceConfigTool];
+
+    const provisionAssistant = createToolCallingAgent({
+      llm,
+      tools: tools,
+      prompt: ChatPromptTemplate.fromMessages([
+        ['system', PROVISION_AGENT_PROMPT],
+        ['human', '{input}'],
+        ['human', 'CSP: {csp}'],
+        ['human', 'User ID: {userId}'],
+        ['human', 'Payload: {payload}'],
+        ['placeholder', '{agent_scratchpad}'],
+      ]),
+    });
+    // Create the base parameters
+    const invokeParams: InvokeParams = {
       input: input.message,
       csp: input.csp,
       userId: input.userId,
-      agent_scratchpad: ""
+      agent_scratchpad: '',
+      payload: input.payload
+        ? JSON.stringify(input.payload)
+        : 'No payload provided',
+    };
+
+    // Create agent executor with appropriate tools based on payload
+    const executor = new AgentExecutor({
+      agent: provisionAssistant,
+      tools: tools,
+      maxIterations: 3,
+      returnIntermediateSteps: true,
     });
+
+    const result = await executor.invoke(invokeParams);
 
     // Extract the tool response from intermediateSteps if available
     const toolResponse = result.intermediateSteps?.[0]?.observation;
-    
+
     // Parse the tool response if it's a string
     let parsedToolResponse;
     try {
-      parsedToolResponse = typeof toolResponse === 'string' 
-        ? JSON.parse(toolResponse)
-        : toolResponse;
+      parsedToolResponse =
+        typeof toolResponse === 'string'
+          ? JSON.parse(toolResponse)
+          : toolResponse;
     } catch (error) {
       console.error('Error parsing tool response:', error);
       parsedToolResponse = {
@@ -89,8 +136,8 @@ async function handleProvisionAgent(input: StandardizedInput) {
         tool_response: {
           status: 'success',
           message: 'Processed successfully',
-          service: null
-        }
+          service: null,
+        },
       };
     }
 
@@ -100,8 +147,8 @@ async function handleProvisionAgent(input: StandardizedInput) {
       tool_response: parsedToolResponse.tool_response || {
         status: 'success',
         message: 'Request processed successfully',
-        service: null
-      }
+        service: null,
+      },
     };
   } catch (error) {
     console.error('Error in provision agent:', error);
@@ -111,8 +158,8 @@ async function handleProvisionAgent(input: StandardizedInput) {
         status: 'error',
         message: error.message,
         service: null,
-        deployment: null
-      }
+        deployment: null,
+      },
     };
   }
 }
