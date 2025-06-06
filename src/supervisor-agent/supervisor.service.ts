@@ -236,10 +236,16 @@ Format: Return only the response text, no JSON or special formatting.`;
     message: string,
     userId?: string,
     providedCsp?: string,
+    chatId?: string,
     extraPayload?: Record<string, any>
   ) {
     const startTime = Date.now();
     let success = false;
+    const chatTitle = extraPayload?.chatTitle || `Chat ${new Date().toLocaleString()}`; // Use provided title or generate temporary one
+
+    if (!chatId) {
+      throw new Error('chatId is required');
+    }
 
     try {
       const cleanLlm = new ChatOllama({
@@ -270,7 +276,9 @@ Format: Return only the response text, no JSON or special formatting.`;
           'none',
           { response: errorMessage },
           providedCsp.toUpperCase(),
-          providedCsp,
+          chatId,
+          chatTitle,
+          providedCsp
         );
 
         return {
@@ -282,6 +290,8 @@ Format: Return only the response text, no JSON or special formatting.`;
             detected_csp: detectedCsp,
             original_csp: providedCsp,
             userId,
+            chatId,
+            chatTitle
           },
         };
       }
@@ -361,7 +371,9 @@ Format: Return only the response text, no JSON or special formatting.`;
         executedTool,
         toolObservation,
         effectiveCsp,
-        providedCsp,
+        chatId,
+        chatTitle,
+        providedCsp
       );
 
       return {
@@ -374,6 +386,8 @@ Format: Return only the response text, no JSON or special formatting.`;
           detected_csp: detectedCsp || undefined,
           original_csp: providedCsp,
           userId,
+          chatId,
+          chatTitle
         },
       };
     } catch (error) {
@@ -420,7 +434,9 @@ Format: Return only the response text, no JSON or special formatting.`;
     executedTool: string,
     toolObservation: any,
     effectiveCsp: string,
-    originalCsp?: string,
+    chatId: string,
+    chatTitle: string,
+    originalCsp?: string
   ) {
     try {
       console.log('Storing conversation...');
@@ -438,6 +454,8 @@ Format: Return only the response text, no JSON or special formatting.`;
           },
         },
         effectiveCsp,
+        chatId,
+        chatTitle
       );
       console.log('Conversation stored successfully');
     } catch (error) {

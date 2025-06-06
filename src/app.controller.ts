@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Param } from '@nestjs/common';
 import {
   HumanMessage,
   SystemMessage,
@@ -20,12 +20,14 @@ import { recommendationsAgentTool } from './tools-as-agents/recommendations-sub-
 import { ConversationManager } from './utils/conversation-store';
 import { UserConversation } from './utils/conversation.types';
 import { SupervisorAgentService } from './supervisor-agent/supervisor.service';
+import { AppService } from './app.service';
 
 // src/dto/process-query.dto.ts
 export class ProcessQueryDto {
   message: string;
   userId?: string;
   csp?: string;
+  chatId?: string;
   payload?: Record<string, any>; // Add any additional optional payload
 }
 
@@ -37,13 +39,15 @@ export class AppController {
   private readonly memory: BufferMemory;
   private readonly conversationManager: ConversationManager;
   private readonly supervisorAgent: SupervisorAgentService;
+  private readonly appService: AppService;
 
-  constructor() {
+  constructor(appService: AppService) {
     console.log('Initializing AppController...');
     this.toolRegistry = ToolRegistry.getInstance();
     this.metrics = AgentMetrics.getInstance();
     this.conversationManager = ConversationManager.getInstance();
     this.supervisorAgent = SupervisorAgentService.getInstance();
+    this.appService = appService;
     console.log('ConversationManager initialized');
     this.memory = new BufferMemory({
       returnMessages: true,
@@ -60,8 +64,28 @@ export class AppController {
 
   @Post('/process-query')
   async processQuery(@Body() body: ProcessQueryDto) {
-    console.log('Processing user query:', body);
-    return this.supervisorAgent.processQuery(body.message, body.userId, body.csp, body.payload);
+    const { message, userId, csp, chatId, payload } = body;
+
+    console.log('Processing query...', body);
+
+    if (!message || !userId || !csp || !chatId) {
+      throw new Error('Missing required parameters: message, userId, csp, and chatId are required');
+    }
+
+    try {
+      const response = await this.supervisorAgent.processQuery(
+        message,
+        userId,
+        csp,
+        chatId,
+        payload
+      );
+      
+      return response;
+    } catch (error) {
+      console.error('Error processing query:', error);
+      throw error;
+    }
   }
 
   @Post('/metrics')
@@ -70,13 +94,88 @@ export class AppController {
   }
 
   @Post('/conversations')
-  async getConversations(@Body() body: { userId: string }): Promise<UserConversation | null> {
-    return this.conversationManager.getUserHistory(body.userId);
+  async getConversations(@Body() body: { userId: string }): Promise<{
+    userId: string;
+    chats: Array<{
+      chatId: string;
+      chatTitle: string;
+      timestamp: string;
+      csp: string;
+    }>;
+  }> {
+    const conversations = await this.conversationManager.getUserHistory(body.userId);
+    if (!conversations) {
+      return { userId: body.userId, chats: [] };
+    }
+
+    // Transform the conversations to include chat details
+    const chats = Object.entries(conversations.chats || {}).map(([chatId, chat]) => ({
+      chatId,
+      chatTitle: chat.chatTitle,
+      timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
+      csp: conversations.csp
+    }));
+
+    return {
+      userId: body.userId,
+      chats
+    };
+  }
+
+  @Post('/conversations/:userId/:chatId')
+  async getChatHistory(
+    @Param('userId') userId: string,
+    @Param('chatId') chatId: string
+  ): Promise<{
+    chatId: string;
+    chatTitle: string;
+    timestamp: string;
+    csp: string;
+    messages: Array<{
+      role: 'human' | 'assistant';
+      content: string;
+      timestamp: string;
+    }>;
+  }> {
+    const conversations = await this.conversationManager.getUserHistory(userId);
+    if (!conversations || !conversations.chats || !conversations.chats[chatId]) {
+      throw new Error('Chat not found');
+    }
+
+    const chat = conversations.chats[chatId];
+    return {
+      chatId,
+      chatTitle: chat.chatTitle,
+      timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
+      csp: conversations.csp,
+      messages: chat.history.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp
+      }))
+    };
   }
 
   @Post('/conversations/csp')
-  async getConversationsByCSP(@Body() body: { csp: string }): Promise<{ userId: string; conversation: UserConversation }[]> {
-    return this.conversationManager.getConversationsByCSP(body.csp);
+  async getConversationsByCSP(@Body() body: { csp: string }): Promise<Array<{
+    userId: string;
+    chats: Array<{
+      chatId: string;
+      chatTitle: string;
+      timestamp: string;
+      csp: string;
+    }>;
+  }>> {
+    const conversations = await this.conversationManager.getConversationsByCSP(body.csp);
+    return conversations.map(conv => ({
+      userId: conv.userId,
+      chats: Object.entries(conv.conversation.chats || {}).map(([chatId, chat]) => ({
+        chatId,
+        chatTitle: chat.chatTitle,
+        timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
+        csp: conv.conversation.csp
+      }))
+    }));
   }
 
   @Post('/conversations/users')

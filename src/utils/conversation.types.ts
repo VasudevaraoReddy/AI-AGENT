@@ -4,9 +4,16 @@ export interface ConversationMessage {
     timestamp: string;
 }
 
+export interface Chat {
+    chatTitle: string;
+    history: ConversationMessage[];
+}
+
 export interface UserConversation {
     csp: string;
-    history: ConversationMessage[];
+    chats: {
+        [chatId: string]: Chat;
+    };
 }
 
 export interface ConversationStore {
