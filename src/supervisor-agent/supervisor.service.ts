@@ -273,6 +273,7 @@ Format: Return only the response text, no JSON or special formatting.`;
           userId || 'anonymous',
           message,
           errorMessage,
+          "none",
           'none',
           { response: errorMessage },
           providedCsp.toUpperCase(),
@@ -283,6 +284,7 @@ Format: Return only the response text, no JSON or special formatting.`;
 
         return {
           response: errorMessage,
+          supervisorResponse: "none",
           delegated_to: 'none',
           tool_result: null,
           metadata: {
@@ -368,6 +370,7 @@ Format: Return only the response text, no JSON or special formatting.`;
         userId || 'anonymous',
         message,
         outputResponse,
+        supervisorResponse,
         executedTool,
         toolObservation,
         effectiveCsp,
@@ -431,6 +434,7 @@ Format: Return only the response text, no JSON or special formatting.`;
     userId: string,
     message: string,
     response: string,
+    supervisorResponse: string,
     executedTool: string,
     toolObservation: any,
     effectiveCsp: string,
@@ -446,6 +450,7 @@ Format: Return only the response text, no JSON or special formatting.`;
         {
           response,
           delegated_to: executedTool,
+          supervisorResponse,
           tool_result: toolObservation.tool_response || toolObservation,
           metadata: {
             csp: effectiveCsp,
