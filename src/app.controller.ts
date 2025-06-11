@@ -21,6 +21,7 @@ import { ConversationManager } from './utils/conversation-store';
 import { UserConversation } from './utils/conversation.types';
 import { SupervisorAgentService } from './supervisor-agent/supervisor.service';
 import { AppService } from './app.service';
+import { PayloadHandler, StandardPayload } from './utils/payload-handler';
 
 // src/dto/process-query.dto.ts
 export class ProcessQueryDto {
@@ -28,9 +29,8 @@ export class ProcessQueryDto {
   userId?: string;
   csp?: string;
   chatId?: string;
-  payload?: Record<string, any>; // Add any additional optional payload
+  payload?: StandardPayload; // Use the standardized payload type
 }
-
 
 @Controller()
 export class AppController {
@@ -40,6 +40,7 @@ export class AppController {
   private readonly conversationManager: ConversationManager;
   private readonly supervisorAgent: SupervisorAgentService;
   private readonly appService: AppService;
+  private readonly payloadHandler: PayloadHandler;
 
   constructor(appService: AppService) {
     console.log('Initializing AppController...');
@@ -48,6 +49,7 @@ export class AppController {
     this.conversationManager = ConversationManager.getInstance();
     this.supervisorAgent = SupervisorAgentService.getInstance();
     this.appService = appService;
+    this.payloadHandler = PayloadHandler.getInstance();
     console.log('ConversationManager initialized');
     this.memory = new BufferMemory({
       returnMessages: true,
@@ -73,12 +75,15 @@ export class AppController {
     }
 
     try {
+      // Standardize the payload if it exists
+      const standardizedPayload = payload ? this.payloadHandler.standardizePayload(payload) : undefined;
+
       const response = await this.supervisorAgent.processQuery(
         message,
         userId,
         csp,
         chatId,
-        payload
+        standardizedPayload
       );
       
       return response;

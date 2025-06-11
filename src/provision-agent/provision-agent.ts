@@ -3,6 +3,7 @@ import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import serviceConfigTool from './tools/serciveConfig.tool';
 import deployTool from './tools/deploy.tool';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { PayloadHandler, StandardPayload } from '../utils/payload-handler';
 
 // Create a type for the standardized input
 interface StandardizedInput {
@@ -77,12 +78,26 @@ async function handleProvisionAgent(input: StandardizedInput) {
   console.log('Provision agent input:', input);
 
   try {
-    const hasPayload =
-      input.payload &&
-      typeof input.payload === 'object' &&
-      Object.keys(input.payload).length > 0;
+    const payloadHandler = PayloadHandler.getInstance();
+    let hasValidPayload = false;
 
-    const tools = hasPayload
+    try {
+      if (input.payload) {
+        // Try to standardize the payload
+        const standardizedPayload = payloadHandler.standardizePayload(input.payload);
+        hasValidPayload = Boolean(
+          standardizedPayload &&
+          standardizedPayload.template &&
+          standardizedPayload.formData &&
+          Object.keys(standardizedPayload.formData).length > 0
+        );
+      }
+    } catch (error) {
+      console.error('Error validating payload:', error);
+      hasValidPayload = false;
+    }
+
+    const tools = hasValidPayload
       ? [deployTool]
       : [serviceConfigTool];
 
@@ -98,6 +113,7 @@ async function handleProvisionAgent(input: StandardizedInput) {
         ['placeholder', '{agent_scratchpad}'],
       ]),
     });
+
     // Create the base parameters
     const invokeParams: InvokeParams = {
       input: input.message,
@@ -105,7 +121,9 @@ async function handleProvisionAgent(input: StandardizedInput) {
       userId: input.userId,
       agent_scratchpad: '',
       payload: input.payload
-        ? JSON.stringify(input.payload)
+        ? (typeof input.payload === 'string'
+            ? input.payload
+            : JSON.stringify(input.payload))
         : 'No payload provided',
     };
 
@@ -117,7 +135,12 @@ async function handleProvisionAgent(input: StandardizedInput) {
       returnIntermediateSteps: true,
     });
 
-    const result = await executor.invoke(invokeParams);
+    // Format the message properly
+    const formattedMessage = `${input.message}\nCloud Provider: ${input.csp}\nUser ID: ${input.userId}`;
+    const result = await executor.invoke({
+      ...invokeParams,
+      input: formattedMessage
+    });
 
     // Extract the tool response from intermediateSteps if available
     const toolResponse = result.intermediateSteps?.[0]?.observation;

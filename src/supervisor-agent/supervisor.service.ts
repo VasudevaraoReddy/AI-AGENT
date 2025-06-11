@@ -8,6 +8,7 @@ import { AgentMetrics } from '../utils/agent-metrics';
 import { ConversationManager } from '../utils/conversation-store';
 import { ToolRegistry } from '../utils/tool-registry';
 import { SUPERVISOR_SYSTEM_PROMPT } from './supervisor.prompt';
+import { PayloadHandler, StandardPayload } from '../utils/payload-handler';
 
 export class SupervisorAgentService {
   private static instance: SupervisorAgentService;
@@ -15,11 +16,13 @@ export class SupervisorAgentService {
   private readonly toolRegistry: ToolRegistry;
   private readonly metrics: AgentMetrics;
   private readonly conversationManager: ConversationManager;
+  private readonly payloadHandler: PayloadHandler;
 
   private constructor() {
     this.toolRegistry = ToolRegistry.getInstance();
     this.metrics = AgentMetrics.getInstance();
     this.conversationManager = ConversationManager.getInstance();
+    this.payloadHandler = PayloadHandler.getInstance();
     this.memory = new BufferMemory({
       returnMessages: true,
       memoryKey: 'chat_history',
@@ -33,43 +36,6 @@ export class SupervisorAgentService {
       SupervisorAgentService.instance = new SupervisorAgentService();
     }
     return SupervisorAgentService.instance;
-  }
-
-  private async detectCSP(llm: any, message: string): Promise<string | null> {
-    try {
-      const cspResult = await llm.invoke([
-        new SystemMessage(`
-  You are a cloud provider detector. Extract the cloud provider mentioned in the message.
-
-    RULES:
-    - Return one of AWS, AZURE, GCP, or NULL
-    - Return NULL if no provider or multiple providers are clearly mentioned
-    - Return only the provider name, uppercase, no quotes or extra text
-    - If you are not sure about the provider, return NULL
-
-    Examples:
-    "Deploy in Azure" -> AZURE
-    "Create an instance in AWS" -> AWS
-    "Setup a VM on GCP" -> GCP
-    "Create a VM" -> NULL
-    "Deploy on AWS and Azure" -> NULL
-    "I want a VM" -> NULL
-  `),
-        new HumanMessage(message),
-      ]);
-
-      const raw = String(cspResult?.content || '')
-        .replace(/[`"'\\\n]/g, '') // remove noise
-        .trim()
-        .toUpperCase();
-
-      const normalized = raw.split(/\s+/)[0]; // handle if LLM returns "AZURE Cloud" etc.
-
-      return ['AWS', 'AZURE', 'GCP'].includes(normalized) ? normalized : null;
-    } catch (error) {
-      console.error('Error detecting CSP:', error);
-      return null;
-    }
   }
 
   private async generateSupervisorResponse(
@@ -116,71 +82,82 @@ export class SupervisorAgentService {
     }
   }
 
+  
+
   private getToolSpecificPrompt(executedTool: string): string {
     const baseRules = `
-RULES:
-1. Keep the tone professional but conversational
-2. Be specific about the results
-3. If there are issues or errors, explain them clearly
-4. Do not include any words like "Here is the tool response" in your summary
-5. Do not include phrases like "Here's a summary" or "Tool response shows"
-6. Start directly with the key points`;
+          RULES:
+          1. Keep the tone professional but conversational
+          2. Be specific about the results
+          3. If there are issues or errors, explain them clearly
+          4. Do not include any words like "Here is the tool response" in your summary
+          5. Do not include phrases like "Here's a summary" or "Tool response shows"
+          6. Start directly with the key points
+          `;
 
     switch (executedTool) {
       case 'recommendations_agent_tool':
-        return `You are analyzing cloud infrastructure recommendations.
+        return `
+        You are analyzing cloud infrastructure recommendations.
 
-${baseRules}
+        Your task is to summarize real security or performance recommendations extracted from a cloud provider scan.
 
-For Recommendations:
-1. Start with the total number of recommendations found
-2. Group recommendations by:
-   - Category (Security, Performance, Cost, etc.)
-   - Impact level (High, Medium, Low)
-3. For each recommendation, highlight:
-   - The specific issue
-   - The affected resource
-   - The suggested solution
-4. If no recommendations found:
-   - Clearly state no recommendations for the specific service
-   - List the services that were analyzed
-5. Always use the exact service name from detected.service
-6. Format in bullet points for easy reading
 
-Format: Return only the response text, no JSON or special formatting.`;
+        ${baseRules}
+
+        For Recommendations:
+        1. Start with the total number of recommendations found
+        2. Group recommendations by:
+          - Category (Security, Performance, Cost, etc.)
+          - Impact level (High, Medium, Low)
+        3. For each recommendation, highlight:
+          - The specific issue
+          - The affected resource
+          - The suggested solution
+                4. If no recommendations found:
+                  - Clearly state no recommendations for the specific service
+                  - List the services that were analyzed
+                5. Always use the exact service name from detected.service
+                6. Format in bullet points for easy reading
+
+        Format: Return only the response text, no JSON or special formatting.`;
 
       case 'provision_agent_tool':
-        return `You are analyzing cloud resource provisioning results.
+        return `
+        You are analyzing cloud resource provisioning results.
 
-${baseRules}
+        ${baseRules}
 
-For Provisioning:
-1. Start with the provisioning status (success/failure)
-2. Include:
-   - Resource type and name
-   - Configuration details
-   - Any important settings or parameters
-3. For successful provisions:
-   - List the key configurations applied
-   - Any next steps or recommendations
-4. For failures:
-   - Clear explanation of what went wrong
-   - Suggested remediation steps
-5. Format in bullet points for easy reading
+        For Provisioning:
+        1. Start with the provisioning status (success/failure)
+        2. Include:
+          - Resource type and name
+          - Configuration details
+          - Any important settings or parameters
+        3. For successful provisions:
+          - List the key configurations applied
+          - Any next steps or recommendations
+        4. For failures:
+          - Clear explanation of what went wrong
+          - Suggested remediation steps
+        5. Format in bullet points for easy reading
 
-Format: Return only the response text, no JSON or special formatting.`;
+        Format: Return only the response text, no JSON or special formatting.
+        `;
 
       default:
-        return `You are a cloud infrastructure supervisor that analyzes and summarizes tool responses.
+        return `
+        You are a cloud infrastructure supervisor that analyzes and summarizes tool responses.
 
-${baseRules}
+        ${baseRules}
 
-Additional Rules:
-1. Include relevant numbers and statistics when available
-2. Generate summary in points format
-3. Focus on key outcomes and important details
+        Additional Rules:
+        1. Include relevant numbers and statistics when available
+        2. Generate summary in points format
+        3. Focus on key outcomes and important details
 
-Format: Return only the response text, no JSON or special formatting.`;
+        Format: Return only the response text, no JSON or special formatting.
+        `;
     }
   }
 
@@ -237,11 +214,13 @@ Format: Return only the response text, no JSON or special formatting.`;
     userId?: string,
     providedCsp?: string,
     chatId?: string,
-    extraPayload?: Record<string, any>
+    extraPayload?: StandardPayload,
   ) {
     const startTime = Date.now();
     let success = false;
-    const chatTitle = extraPayload?.chatTitle || `Chat ${new Date().toLocaleString()}`; // Use provided title or generate temporary one
+    const chatTitle =
+      extraPayload?.metadata?.chatTitle ||
+      `Chat ${new Date().toLocaleString()}`;
 
     if (!chatId) {
       throw new Error('chatId is required');
@@ -253,50 +232,7 @@ Format: Return only the response text, no JSON or special formatting.`;
         baseUrl: 'https://codeprism-ai.com',
       });
 
-      // Detect CSP from message
-      const detectedCsp = await this.detectCSP(cleanLlm, message);
-      console.log('Detected CSP:', detectedCsp);
-      const effectiveCsp =
-        providedCsp?.toUpperCase() || detectedCsp || 'general';
-
-      //Enforce CSP mismatch check here (before invoking agent)
-      if (
-        providedCsp &&
-        detectedCsp &&
-        providedCsp.toUpperCase() !== detectedCsp
-      ) {
-        const errorMessage = `The requested CSP "${detectedCsp}" does not match the provided CSP "${providedCsp.toUpperCase()}". Unable to process the request.`;
-
-        // Save this message to context and conversation log
-        await this.saveContext(message, errorMessage, providedCsp, userId);
-        await this.storeConversation(
-          userId || 'anonymous',
-          message,
-          errorMessage,
-          "none",
-          'none',
-          { response: errorMessage },
-          providedCsp.toUpperCase(),
-          chatId,
-          chatTitle,
-          providedCsp
-        );
-
-        return {
-          response: errorMessage,
-          supervisorResponse: "none",
-          delegated_to: 'none',
-          tool_result: null,
-          metadata: {
-            csp: providedCsp.toUpperCase(),
-            detected_csp: detectedCsp,
-            original_csp: providedCsp,
-            userId,
-            chatId,
-            chatTitle
-          },
-        };
-      }
+      const effectiveCsp = providedCsp?.toUpperCase() || 'general';
 
       // Initialize LLM
       const llm = new ChatOllama({
@@ -304,6 +240,7 @@ Format: Return only the response text, no JSON or special formatting.`;
         baseUrl: 'https://codeprism-ai.com',
         format: 'json',
       }).bindTools(this.toolRegistry.getAvailableTools());
+
       // Create agent with tools
       const agent = createToolCallingAgent({
         llm: llm.withConfig({ format: 'json' }),
@@ -335,12 +272,13 @@ Format: Return only the response text, no JSON or special formatting.`;
         input: message,
         csp: effectiveCsp,
         userId: userId || 'anonymous',
-        payload: extraPayload || {},
+        payload: extraPayload
+          ? this.payloadHandler.stringifyPayload(extraPayload)
+          : '{}',
         chat_history: chatHistory.chat_history || [],
         agent_scratchpad: '',
         metadata: {
           original_csp: providedCsp,
-          detected_csp: detectedCsp,
           original_userId: userId,
         },
       });
@@ -376,7 +314,7 @@ Format: Return only the response text, no JSON or special formatting.`;
         effectiveCsp,
         chatId,
         chatTitle,
-        providedCsp
+        providedCsp,
       );
 
       return {
@@ -386,11 +324,10 @@ Format: Return only the response text, no JSON or special formatting.`;
         tool_result: toolObservation.tool_response || toolObservation,
         metadata: {
           csp: effectiveCsp,
-          detected_csp: detectedCsp || undefined,
           original_csp: providedCsp,
           userId,
           chatId,
-          chatTitle
+          chatTitle,
         },
       };
     } catch (error) {
@@ -440,7 +377,7 @@ Format: Return only the response text, no JSON or special formatting.`;
     effectiveCsp: string,
     chatId: string,
     chatTitle: string,
-    originalCsp?: string
+    originalCsp?: string,
   ) {
     try {
       console.log('Storing conversation...');
@@ -460,7 +397,7 @@ Format: Return only the response text, no JSON or special formatting.`;
         },
         effectiveCsp,
         chatId,
-        chatTitle
+        chatTitle,
       );
       console.log('Conversation stored successfully');
     } catch (error) {

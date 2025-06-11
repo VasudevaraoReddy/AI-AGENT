@@ -2,9 +2,12 @@ import { tool } from '@langchain/core/tools';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import { PayloadHandler, StandardPayload } from '../../utils/payload-handler';
 
 const deployTool = tool(
   async ({ serviceName, payload, csp, userId }) => {
+    const payloadHandler = PayloadHandler.getInstance();
+
     // If no payload is provided or it's the default message
     if (!payload || payload === "No payload provided") {
       return JSON.stringify({
@@ -22,16 +25,12 @@ const deployTool = tool(
       });
     }
 
-    // Parse payload if it's a string
-    let parsedPayload;
+    // Parse and standardize the payload
+    let standardizedPayload: StandardPayload;
     try {
-      if (typeof payload === 'string') {
-        // Clean the string if it's malformed
-        const cleanedPayload = payload.replace(/\\"/g, '"').replace(/^"|"$/g, '');
-        parsedPayload = JSON.parse(cleanedPayload);
-      } else {
-        parsedPayload = payload;
-      }
+      // If payload is a string, try to parse it first
+      const payloadObj = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      standardizedPayload = payloadHandler.standardizePayload(payloadObj);
     } catch (error) {
       console.error('Payload parsing error:', error);
       return JSON.stringify({
@@ -49,8 +48,8 @@ const deployTool = tool(
       });
     }
 
-    const formData = parsedPayload?.formData || {};
-    const template = parsedPayload?.template;
+    const formData = standardizedPayload.formData;
+    const template = standardizedPayload.template;
     
     // Basic input validation
     if (!formData || Object.keys(formData).length === 0) {
