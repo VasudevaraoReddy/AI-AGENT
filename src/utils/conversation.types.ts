@@ -6,6 +6,7 @@ export interface ConversationMessage {
 
 export interface Chat {
     chatTitle: string;
+    csp: string;
     history: ConversationMessage[];
 }
 

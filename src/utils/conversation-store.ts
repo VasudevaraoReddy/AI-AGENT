@@ -82,7 +82,7 @@ export class ConversationManager {
             // Initialize user conversation if it doesn't exist
             if (!conversations[userId]) {
                 conversations[userId] = {
-                    csp: csp.toLowerCase(),
+                    csp: csp.toLowerCase(), // This will be the default CSP for the user
                     chats: {}
                 };
             }
@@ -91,6 +91,7 @@ export class ConversationManager {
             if (!conversations[userId].chats[chatId]) {
                 conversations[userId].chats[chatId] = {
                     chatTitle,
+                    csp: csp.toLowerCase(),
                     history: []
                 };
             }
@@ -104,10 +105,17 @@ export class ConversationManager {
                 timestamp
             });
 
-            // Add assistant response
+            // Add assistant response with chat-specific CSP in metadata
             conversations[userId].chats[chatId].history.push({
                 role: 'assistant',
-                content: response,
+                content: {
+                    ...response,
+                    metadata: {
+                        ...response.metadata,
+                        csp: csp.toLowerCase(), // Ensure chat-specific CSP is used
+                        original_csp: csp.toLowerCase()
+                    }
+                },
                 timestamp
             });
 

@@ -118,7 +118,7 @@ export class AppController {
       chatId,
       chatTitle: chat.chatTitle,
       timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
-      csp: conversations.csp
+      csp: chat.csp || conversations.csp // Use chat-level CSP with fallback to user-level CSP
     }));
 
     return {
@@ -152,7 +152,7 @@ export class AppController {
       chatId,
       chatTitle: chat.chatTitle,
       timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
-      csp: conversations.csp,
+      csp: chat.csp || conversations.csp, // Use chat-level CSP with fallback to user-level CSP
       messages: chat.history.map(msg => ({
         role: msg.role,
         content: msg.content,
@@ -178,7 +178,7 @@ export class AppController {
         chatId,
         chatTitle: chat.chatTitle,
         timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
-        csp: conv.conversation.csp
+        csp: chat.csp || conv.conversation.csp // Use chat-level CSP with fallback to user-level CSP
       }))
     }));
   }
