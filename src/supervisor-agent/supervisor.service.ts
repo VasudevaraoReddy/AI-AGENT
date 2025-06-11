@@ -54,14 +54,13 @@ export class SupervisorAgentService {
       });
 
       // Get tool-specific prompt
-      const systemPrompt = this.getToolSpecificPrompt(executedTool);
-
-      const toolResponseStr = JSON.stringify(toolObservation, null, 2);
+      const systemPrompt = this.getToolSpecificPrompt(executedTool)
+      const formattedSystemPrompt = systemPrompt.replace('{toolObservation}', toolObservation);
 
       const result = await llm.invoke([
-        new SystemMessage(systemPrompt),
+        new SystemMessage(formattedSystemPrompt),
         new HumanMessage(
-          `Please analyze this response and generate an informative summary:\n${toolResponseStr}`,
+          `Please analyze this response and generate an informative summary`,
         ),
       ]);
 
@@ -93,6 +92,9 @@ export class SupervisorAgentService {
           4. Do not include any words like "Here is the tool response" in your summary
           5. Do not include phrases like "Here's a summary" or "Tool response shows"
           6. Start directly with the key points
+          7. Never describe the JSON structure. Only summarize real content.
+          8. Do not include any words like "Here is the tool response" in your summary.
+          9. Loop over the recommendations and summarize them in a concise manner.
           `;
 
     switch (executedTool) {
@@ -119,7 +121,10 @@ export class SupervisorAgentService {
                   - List the services that were analyzed
                 5. Always use the exact service name from detected.service
                 6. Format in bullet points for easy reading
+        4. Never describe the JSON structure. Only summarize real content.
+        5. Do not include any words like "Here is the tool response" in your summary.
 
+        recommendations: {toolObservation}
         Format: Return only the response text, no JSON or special formatting.`;
 
       case 'provision_agent_tool':
