@@ -27,6 +27,8 @@ export class UserController {
       id: user.id,
       email: user.email,
       userId: user.userId,
+      lastLogin: user.lastLogin,
+      createdAt: user.createdAt,
     };
   }
 

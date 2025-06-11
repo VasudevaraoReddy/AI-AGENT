@@ -11,12 +11,12 @@ import {
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
 import { BufferMemory } from "langchain/memory";
-import { provisionAgentTool } from './tools-as-agents/provision-sub-agent';
-import { generalCloudAgentTool } from './tools-as-agents/general-cloud-agent';
+import { provisionAgentTool } from './supervisor-agent/tools/provision-sub-agent';
+import { generalCloudAgentTool } from './supervisor-agent/tools/general-cloud-agent';
 import { ToolRegistry } from './utils/tool-registry';
 import { AgentMetrics } from './utils/agent-metrics';
 import { AgentError } from './utils/agent-error';
-import { recommendationsAgentTool } from './tools-as-agents/recommendations-sub-agent';
+import { recommendationsAgentTool } from './supervisor-agent/tools/recommendations-sub-agent';
 import { ConversationManager } from './utils/conversation-store';
 import { UserConversation } from './utils/conversation.types';
 import { SupervisorAgentService } from './supervisor-agent/supervisor.service';

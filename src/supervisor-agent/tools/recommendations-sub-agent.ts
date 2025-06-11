@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { ChatOllama } from '@langchain/ollama';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { AgentError } from '../utils/agent-error';
-import { AgentMetrics } from '../utils/agent-metrics';
+import { AgentError } from '../../utils/agent-error';
+import { AgentMetrics } from '../../utils/agent-metrics';
 import { BufferMemory } from 'langchain/memory';
-import handleRecommendationsAgent from '../recommendations-agent/recommendations-agent';
+import handleRecommendationsAgent from '../../recommendations-agent/recommendations-agent';
 
 const recommendationsAgentTool = new DynamicStructuredTool({
   name: 'recommendations_agent_tool',

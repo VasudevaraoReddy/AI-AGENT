@@ -83,7 +83,7 @@ async function handleProvisionAgent(input: StandardizedInput) {
       Object.keys(input.payload).length > 0;
 
     const tools = hasPayload
-      ? [serviceConfigTool, deployTool]
+      ? [deployTool]
       : [serviceConfigTool];
 
     const provisionAssistant = createToolCallingAgent({
