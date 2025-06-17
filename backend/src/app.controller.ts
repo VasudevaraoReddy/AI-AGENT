@@ -1,4 +1,10 @@
-import { Controller, Post, Body, UnauthorizedException, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
+  Param,
+} from '@nestjs/common';
 import {
   HumanMessage,
   SystemMessage,
@@ -10,7 +16,7 @@ import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from '@langchain/core/prompts';
-import { BufferMemory } from "langchain/memory";
+import { BufferMemory } from 'langchain/memory';
 import { provisionAgentTool } from './supervisor-agent/tools/provision-sub-agent';
 import { generalCloudAgentTool } from './supervisor-agent/tools/general-cloud-agent';
 import { ToolRegistry } from './utils/tool-registry';
@@ -53,9 +59,9 @@ export class AppController {
     console.log('ConversationManager initialized');
     this.memory = new BufferMemory({
       returnMessages: true,
-      memoryKey: "chat_history",
-      inputKey: "input",
-      outputKey: "output"
+      memoryKey: 'chat_history',
+      inputKey: 'input',
+      outputKey: 'output',
     });
 
     // Register available tools
@@ -69,23 +75,26 @@ export class AppController {
     const { message, userId, csp, chatId, payload } = body;
 
     console.log('Processing query...', body);
-
     if (!message || !userId || !csp || !chatId) {
-      throw new Error('Missing required parameters: message, userId, csp, and chatId are required');
+      throw new Error(
+        'Missing required parameters: message, userId, csp, and chatId are required',
+      );
     }
 
     try {
       // Standardize the payload if it exists
-      const standardizedPayload = payload ? this.payloadHandler.standardizePayload(payload) : undefined;
+      const standardizedPayload = payload
+        ? this.payloadHandler.standardizePayload(payload)
+        : undefined;
 
       const response = await this.supervisorAgent.processQuery(
         message,
         userId,
         csp,
         chatId,
-        standardizedPayload
+        standardizedPayload,
       );
-      
+
       return response;
     } catch (error) {
       console.error('Error processing query:', error);
@@ -108,29 +117,33 @@ export class AppController {
       csp: string;
     }>;
   }> {
-    const conversations = await this.conversationManager.getUserHistory(body.userId);
+    const conversations = await this.conversationManager.getUserHistory(
+      body.userId,
+    );
     if (!conversations) {
       return { userId: body.userId, chats: [] };
     }
 
     // Transform the conversations to include chat details
-    const chats = Object.entries(conversations.chats || {}).map(([chatId, chat]) => ({
-      chatId,
-      chatTitle: chat.chatTitle,
-      timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
-      csp: chat.csp || conversations.csp // Use chat-level CSP with fallback to user-level CSP
-    }));
+    const chats = Object.entries(conversations.chats || {}).map(
+      ([chatId, chat]) => ({
+        chatId,
+        chatTitle: chat.chatTitle,
+        timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
+        csp: chat.csp || conversations.csp, // Use chat-level CSP with fallback to user-level CSP
+      }),
+    );
 
     return {
       userId: body.userId,
-      chats
+      chats,
     };
   }
 
   @Post('/conversations/:userId/:chatId')
   async getChatHistory(
     @Param('userId') userId: string,
-    @Param('chatId') chatId: string
+    @Param('chatId') chatId: string,
   ): Promise<{
     chatId: string;
     chatTitle: string;
@@ -143,7 +156,11 @@ export class AppController {
     }>;
   }> {
     const conversations = await this.conversationManager.getUserHistory(userId);
-    if (!conversations || !conversations.chats || !conversations.chats[chatId]) {
+    if (
+      !conversations ||
+      !conversations.chats ||
+      !conversations.chats[chatId]
+    ) {
       throw new Error('Chat not found');
     }
 
@@ -153,33 +170,39 @@ export class AppController {
       chatTitle: chat.chatTitle,
       timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
       csp: chat.csp || conversations.csp, // Use chat-level CSP with fallback to user-level CSP
-      messages: chat.history.map(msg => ({
+      messages: chat.history.map((msg) => ({
         role: msg.role,
         content: msg.content,
-        timestamp: msg.timestamp
-      }))
+        timestamp: msg.timestamp,
+      })),
     };
   }
 
   @Post('/conversations/csp')
-  async getConversationsByCSP(@Body() body: { csp: string }): Promise<Array<{
-    userId: string;
-    chats: Array<{
-      chatId: string;
-      chatTitle: string;
-      timestamp: string;
-      csp: string;
-    }>;
-  }>> {
-    const conversations = await this.conversationManager.getConversationsByCSP(body.csp);
-    return conversations.map(conv => ({
+  async getConversationsByCSP(@Body() body: { csp: string }): Promise<
+    Array<{
+      userId: string;
+      chats: Array<{
+        chatId: string;
+        chatTitle: string;
+        timestamp: string;
+        csp: string;
+      }>;
+    }>
+  > {
+    const conversations = await this.conversationManager.getConversationsByCSP(
+      body.csp,
+    );
+    return conversations.map((conv) => ({
       userId: conv.userId,
-      chats: Object.entries(conv.conversation.chats || {}).map(([chatId, chat]) => ({
-        chatId,
-        chatTitle: chat.chatTitle,
-        timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
-        csp: chat.csp || conv.conversation.csp // Use chat-level CSP with fallback to user-level CSP
-      }))
+      chats: Object.entries(conv.conversation.chats || {}).map(
+        ([chatId, chat]) => ({
+          chatId,
+          chatTitle: chat.chatTitle,
+          timestamp: chat.history[0]?.timestamp || new Date().toISOString(),
+          csp: chat.csp || conv.conversation.csp, // Use chat-level CSP with fallback to user-level CSP
+        }),
+      ),
     }));
   }
 

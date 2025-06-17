@@ -75,8 +75,8 @@ const memory = new BufferMemory({
 
 // === LLM ===
 const llm = new ChatOllama({
-  model: 'llama3.1',
-  baseUrl: 'https://codeprism-ai.com',
+  model: process.env.MODEL_NAME,
+  baseUrl: process.env.MODEL_BASE_URL,
   format: 'json',
 });
 

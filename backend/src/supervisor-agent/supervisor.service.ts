@@ -49,13 +49,16 @@ export class SupervisorAgentService {
       }
 
       const llm = new ChatOllama({
-        model: 'llama3.1',
-        baseUrl: 'https://codeprism-ai.com',
+        model: process.env.MODEL_NAME,
+        baseUrl: process.env.MODEL_BASE_URL,
       });
 
       // Get tool-specific prompt
-      const systemPrompt = this.getToolSpecificPrompt(executedTool)
-      const formattedSystemPrompt = systemPrompt.replace('{toolObservation}', toolObservation);
+      const systemPrompt = this.getToolSpecificPrompt(executedTool);
+      const formattedSystemPrompt = systemPrompt.replace(
+        '{toolObservation}',
+        toolObservation,
+      );
 
       const result = await llm.invoke([
         new SystemMessage(formattedSystemPrompt),
@@ -80,8 +83,6 @@ export class SupervisorAgentService {
       return toolObservation.response || 'Request processed successfully';
     }
   }
-
-  
 
   private getToolSpecificPrompt(executedTool: string): string {
     const baseRules = `
@@ -232,17 +233,12 @@ export class SupervisorAgentService {
     }
 
     try {
-      const cleanLlm = new ChatOllama({
-        model: 'llama3.1',
-        baseUrl: 'https://codeprism-ai.com',
-      });
-
       const effectiveCsp = providedCsp?.toUpperCase() || 'general';
 
       // Initialize LLM
       const llm = new ChatOllama({
-        model: 'llama3.1',
-        baseUrl: 'https://codeprism-ai.com',
+        model: process.env.MODEL_NAME,
+        baseUrl: process.env.MODEL_BASE_URL,
         format: 'json',
       }).bindTools(this.toolRegistry.getAvailableTools());
 

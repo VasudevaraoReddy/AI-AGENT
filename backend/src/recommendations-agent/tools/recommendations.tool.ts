@@ -7,8 +7,8 @@ import axios from 'axios';
 
 
 const llm = new ChatOllama({
-  model: 'llama3.1',
-  baseUrl: 'https://codeprism-ai.com',
+  model: process.env.MODEL_NAME,
+  baseUrl: process.env.MODEL_BASE_URL,
   format: 'json',
 });
 
@@ -41,101 +41,6 @@ async function getImpactedField(query: string): Promise<string> {
   return extractedTerm;
 }
 
-// const recommendationsTool = new DynamicStructuredTool({
-//   name: 'recommendations_service',
-//   description: `Get Azure Advisor recommendations for cloud services based on user requirements.
-//   Returns a JSON object:
-//   {
-//     response: string,
-//     tool_response: {
-//       status: "success" | "error",
-//       message: string,
-//       uniqueImpactedFields: array,
-//       recommendations: array,
-//       detected: {
-//         service: string,
-//         csp: string
-//       }
-//     }
-//   }`,
-//   schema: z.object({
-//     message: z
-//       .string()
-//       .describe('The exact user query for cloud service recommendations'),
-//     csp: z
-//       .string()
-//       .describe('The cloud service provider (AWS, Azure, GCP, Oracle)'),
-//   }),
-//   func: async ({ message, csp }) => {
-//     try {
-//       console.log('In recommendations tool:', { message });
-
-//       // Determine the impacted field from the query
-//       const impactedField = await getImpactedField(message);
-//       console.log('Impacted field:', impactedField);
-
-//       // Call the recommendations API
-//       try {
-//         const response = await axios.get(
-//           `http://localhost:3001/recommendations/fields?impactedField=${impactedField}`,
-//         );
-//         const apiRecommendations = response.data;
-//         console.log('API Recommendations:', apiRecommendations);
-
-//         const formattedResponse = {
-//           response: `Here are the recommendations for your ${impactedField}`,
-//           tool_response: {
-//             status: 'success',
-//             message: `Successfully retrieved recommendations for ${impactedField}`,
-//             uniqueImpactedFields: apiRecommendations.uniqueImpactedFields || [],
-//             recommendations: apiRecommendations.recommendations || [],
-//             detected: {
-//               service: impactedField,
-//               csp: 'AZURE',
-//             },
-//           },
-//         };
-
-//         return JSON.stringify(formattedResponse);
-//       } catch (apiError) {
-//         console.error('Failed to fetch recommendations from API:', apiError);
-//         const errorResponse = {
-//           response: 'Failed to fetch recommendations',
-//           tool_response: {
-//             status: 'error',
-//             message: apiError.message,
-//             recommendations: [],
-//             detected: {
-//               service: impactedField,
-//               csp: 'AZURE',
-//             },
-//           },
-//         };
-//         return JSON.stringify(errorResponse);
-//       }
-//     } catch (error) {
-//       const agentError =
-//         error instanceof AgentError
-//           ? error
-//           : AgentError.fromError(error, 'recommendations_tool');
-
-//       console.error('Error in recommendations tool:', agentError);
-//       return JSON.stringify({
-//         response: 'Error fetching recommendations',
-//         details: {
-//           category: 'error',
-//           recommendations: [],
-//         },
-//         apiResponse: {
-//           uniqueImpactedFields: [],
-//           recommendations: [],
-//           error: agentError.toJSON(),
-//         },
-//       });
-//     }
-//   },
-// });
-
 const recommendationsTool = tool(
   async ({ message, csp }) => {
     try {
@@ -155,8 +60,8 @@ const recommendationsTool = tool(
         const formattedResponse = {
           response: '',
           tool_response: {
-            status: "",
-            message: "",
+            status: '',
+            message: '',
             recommendations: apiRecommendations.recommendations || [],
             uniqueImpactedFields: apiRecommendations.uniqueImpactedFields || [],
             detected: {
@@ -166,12 +71,12 @@ const recommendationsTool = tool(
           },
         };
 
-        if(apiRecommendations.recommendations.length === 0) {
+        if (apiRecommendations.recommendations.length === 0) {
           formattedResponse.response = `No recommendations found for your ${impactedField}. Here are the available impacted fields: ${apiRecommendations.uniqueImpactedFields}`;
           formattedResponse.tool_response.status = 'no_recommendations';
           formattedResponse.tool_response.message = `No recommendations found for your ${impactedField}`;
           return JSON.stringify(formattedResponse);
-        }else{
+        } else {
           formattedResponse.response = `Here are the recommendations for your ${impactedField}`;
           formattedResponse.tool_response.status = 'success';
           formattedResponse.tool_response.message = `Successfully retrieved recommendations for ${impactedField}`;

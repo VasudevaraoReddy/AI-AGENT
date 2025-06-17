@@ -4,6 +4,9 @@ import serviceConfigTool from './tools/serciveConfig.tool';
 import deployTool from './tools/deploy.tool';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { PayloadHandler, StandardPayload } from '../utils/payload-handler';
+import * as dotenv from 'dotenv'
+
+dotenv.config()
 
 // Create a type for the standardized input
 interface StandardizedInput {
@@ -60,8 +63,8 @@ Understand the user's request and invoke the appropriate tool without rephrasing
 
 // Create the provision agent
 const llm = new ChatOllama({
-  baseUrl: 'https://codeprism-ai.com',
-  model: 'llama3.1',
+  model: process.env.MODEL_NAME,
+  baseUrl: process.env.MODEL_BASE_URL,
   format: 'json',
 });
 
@@ -84,12 +87,14 @@ async function handleProvisionAgent(input: StandardizedInput) {
     try {
       if (input.payload) {
         // Try to standardize the payload
-        const standardizedPayload = payloadHandler.standardizePayload(input.payload);
+        const standardizedPayload = payloadHandler.standardizePayload(
+          input.payload,
+        );
         hasValidPayload = Boolean(
           standardizedPayload &&
-          standardizedPayload.template &&
-          standardizedPayload.formData &&
-          Object.keys(standardizedPayload.formData).length > 0
+            standardizedPayload.template &&
+            standardizedPayload.formData &&
+            Object.keys(standardizedPayload.formData).length > 0,
         );
       }
     } catch (error) {
@@ -97,9 +102,7 @@ async function handleProvisionAgent(input: StandardizedInput) {
       hasValidPayload = false;
     }
 
-    const tools = hasValidPayload
-      ? [deployTool]
-      : [serviceConfigTool];
+    const tools = hasValidPayload ? [deployTool] : [serviceConfigTool];
 
     const provisionAssistant = createToolCallingAgent({
       llm,
@@ -121,9 +124,9 @@ async function handleProvisionAgent(input: StandardizedInput) {
       userId: input.userId,
       agent_scratchpad: '',
       payload: input.payload
-        ? (typeof input.payload === 'string'
-            ? input.payload
-            : JSON.stringify(input.payload))
+        ? typeof input.payload === 'string'
+          ? input.payload
+          : JSON.stringify(input.payload)
         : 'No payload provided',
     };
 
@@ -139,7 +142,7 @@ async function handleProvisionAgent(input: StandardizedInput) {
     const formattedMessage = `${input.message}\nCloud Provider: ${input.csp}\nUser ID: ${input.userId}`;
     const result = await executor.invoke({
       ...invokeParams,
-      input: formattedMessage
+      input: formattedMessage,
     });
 
     // Extract the tool response from intermediateSteps if available

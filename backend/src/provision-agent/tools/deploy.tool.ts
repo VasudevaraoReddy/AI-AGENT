@@ -3,13 +3,17 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { PayloadHandler, StandardPayload } from '../../utils/payload-handler';
+import {
+  updateJsonInDevOps,
+  getTerraformVariables,
+} from '../service_calls/AzureDevopsService';
 
 const deployTool = tool(
   async ({ serviceName, payload, csp, userId }) => {
     const payloadHandler = PayloadHandler.getInstance();
 
     // If no payload is provided or it's the default message
-    if (!payload || payload === "No payload provided") {
+    if (!payload || payload === 'No payload provided') {
       return JSON.stringify({
         response: `Cannot deploy without configuration data. Please provide the required configuration values.`,
         tool_response: {
@@ -29,7 +33,8 @@ const deployTool = tool(
     let standardizedPayload: StandardPayload;
     try {
       // If payload is a string, try to parse it first
-      const payloadObj = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      const payloadObj =
+        typeof payload === 'string' ? JSON.parse(payload) : payload;
       standardizedPayload = payloadHandler.standardizePayload(payloadObj);
     } catch (error) {
       console.error('Payload parsing error:', error);
@@ -50,7 +55,7 @@ const deployTool = tool(
 
     const formData = standardizedPayload.formData;
     const template = standardizedPayload.template;
-    
+
     // Basic input validation
     if (!formData || Object.keys(formData).length === 0) {
       return JSON.stringify({
@@ -69,39 +74,80 @@ const deployTool = tool(
     }
 
     try {
-      console.log('Initiating deployment:', { serviceName, csp, userId, formData });
+      console.log('Initiating deployment:', {
+        serviceName,
+        csp,
+        userId,
+        formData,
+      });
 
       const deploymentId = uuidv4();
-      const deploymentRequest = {
-        deploymentId,
-        userId,
-        service: {
-          name: serviceName,
-          provider: csp.toLowerCase(),
-          configuration: formData,
-        },
-        template: template || null,
-        timestamp: new Date().toISOString(),
-      };
+      const tfVariables: any = await getTerraformVariables();
+      if (tfVariables?.length > 0) {
+        let modifiedData = Object.keys(formData).map((key) => ({
+          variableName: key,
+          newValue: formData[key],
+        }));
+        let newUpdatedFormValues = {};
+        modifiedData.map((eachData) => {
+          const variableObject = tfVariables.find((obj) =>
+            obj.hasOwnProperty(eachData?.variableName),
+          );
+          if (variableObject) {
+            newUpdatedFormValues[variableObject[eachData?.variableName]] =
+              eachData?.newValue;
+          } else {
+            newUpdatedFormValues[eachData?.variableName] = eachData?.newValue;
+          }
+        });
 
-      // Optional: call actual deployment API
-      // const response = await axios.post('http://localhost:3001/deployments/create', deploymentRequest);
+        console.log(newUpdatedFormValues);
 
-      return JSON.stringify({
-        response: `Deployment of ${serviceName} has been initiated successfully.`,
-        tool_response: {
-          status: 'success',
-          message: `Successfully initiated deployment of ${serviceName}`,
-          details: {
-            status: 'in_progress',
-            provider: csp,
-            service: serviceName,
-            configuration: formData,
+        try {
+          const response = await updateJsonInDevOps(
+            template,
+            newUpdatedFormValues,
+            userId,
+            'AGENT',
+            'Destroy',
+          );
+
+          console.log(response);
+
+          const deploymentRequest = {
             deploymentId,
-            // ...response.data,
-          },
-        },
-      });
+            userId,
+            service: {
+              name: serviceName,
+              provider: csp.toLowerCase(),
+              configuration: formData,
+            },
+            template: template || null,
+            timestamp: new Date().toISOString(),
+          };
+
+          return JSON.stringify({
+            response: `Platform has initiated infrastructure provisioning for ${serviceName}`,
+            tool_response: {
+              status: 'success',
+              message: `Successfully initiated infrastructure provisioning for ${serviceName}`,
+              details: {
+                status: 'in_progress',
+                provider: csp,
+                service: serviceName,
+                configuration: {
+                  originalData: formData,
+                  modifiedData,
+                },
+                deploymentId,
+                response
+              },
+            },
+          });
+        } catch (error) {
+          console.log(error);
+        }
+      }
     } catch (error: any) {
       console.error('Deployment error:', error);
       return JSON.stringify({
@@ -121,14 +167,21 @@ const deployTool = tool(
   },
   {
     name: 'deploy_service',
-    description: 'Deploy a cloud service using the given configuration. Requires serviceName, csp, userId, and payload with formData.',
+    description:
+      'Deploy a cloud service using the given configuration. Requires serviceName, csp, userId, and payload with formData.',
     schema: z.object({
       serviceName: z.string().describe('The name of the service to deploy'),
       userId: z.string().describe('The user ID for the deployment'),
-      csp: z.string().describe('The cloud service provider (AWS, Azure, GCP, or Oracle)'),
-      payload: z.any().describe('Configuration data for the deployment (can be string or object)')
+      csp: z
+        .string()
+        .describe('The cloud service provider (AWS, Azure, GCP, or Oracle)'),
+      payload: z
+        .any()
+        .describe(
+          'Configuration data for the deployment (can be string or object)',
+        ),
     }),
-  }
+  },
 );
 
 export default deployTool;

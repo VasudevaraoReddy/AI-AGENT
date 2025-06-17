@@ -5,7 +5,10 @@ import { BufferMemory } from 'langchain/memory';
 import { AgentError } from '../utils/agent-error';
 import { AgentMetrics } from '../utils/agent-metrics';
 import recommendationsTool from './tools/recommendations.tool';
+import * as dotenv from "dotenv"
 
+
+dotenv.config()
 // Create a memory instance for the recommendations agent
 const memory = new BufferMemory({
   returnMessages: true,
@@ -16,8 +19,8 @@ const memory = new BufferMemory({
 
 // Create the recommendations agent
 const llm = new ChatOllama({
-  model: 'llama3.1',
-  baseUrl: 'https://codeprism-ai.com',
+  model: process.env.MODEL_NAME,
+  baseUrl: process.env.MODEL_BASE_URL,
   format: 'json',
 });
 

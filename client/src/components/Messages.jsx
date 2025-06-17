@@ -1,17 +1,18 @@
-import { useChatContext } from "../context/ChatContext";
-import { useState, useRef, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
+import { useChatContext } from '../context/ChatContext';
+import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import RenderProvisionLogs from './RenderProvisionLogs';
 
 const getAvatar = (type) => {
-  if (type === "human") {
+  if (type === 'human') {
     return {
-      src: "https://dummyimage.com/128x128/363536/ffffff&text=U",
-      alt: "User",
+      src: 'https://dummyimage.com/128x128/363536/ffffff&text=U',
+      alt: 'User',
     };
   }
   return {
-    src: "https://dummyimage.com/128x128/354ea1/ffffff&text=CM",
-    alt: "Assistant",
+    src: 'https://dummyimage.com/128x128/354ea1/ffffff&text=CM',
+    alt: 'Assistant',
   };
 };
 
@@ -23,27 +24,27 @@ const Messages = () => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
   const handleInputChange = (fieldId, value) => {
     setFormState((prev) => ({ ...prev, [fieldId]: value }));
   };
 
-  const handleDeploy = async(service) => {
-   const payload = {
-    formData: formState,
-    service: service,
-   }
+  const handleDeploy = async (service) => {
+    const payload = {
+      formData: formState,
+      service: service,
+    };
 
-   delete payload.service.requiredFields
+    delete payload.service.requiredFields;
 
-   console.log(payload);
+    console.log(payload);
 
-   await sendMessage({
-    message: `Go ahead and deploy the ${service.name} with below values`,
-    payload: payload,
-   });
+    await sendMessage({
+      message: `Go ahead and deploy the ${service.title} with below values`,
+      payload: payload,
+    });
 
   };
 
@@ -54,7 +55,7 @@ const Messages = () => {
     requiredFields.forEach((field) => {
       initialValues[field.fieldId] = useSuggestedValues
         ? field.exampleValue
-        : "";
+        : '';
     });
 
     // Set initial values only if empty
@@ -82,11 +83,11 @@ const Messages = () => {
               <textarea
                 className="w-full rounded border p-2 text-sm text-slate-900"
                 rows={2}
-                value={formState[field.fieldId] || ""}
+                value={formState[field.fieldId] || ''}
                 onChange={(e) =>
                   handleInputChange(
                     field.fieldId,
-                    e.target.value.split(",").map((v) => v.trim())
+                    e.target.value.split(',').map((v) => v.trim()),
                   )
                 }
                 placeholder={field.fieldName}
@@ -95,7 +96,7 @@ const Messages = () => {
               <input
                 type="text"
                 className="w-full rounded border p-2 text-sm text-slate-900"
-                value={formState[field.fieldId] || ""}
+                value={formState[field.fieldId] || ''}
                 onChange={(e) =>
                   handleInputChange(field.fieldId, e.target.value)
                 }
@@ -115,7 +116,7 @@ const Messages = () => {
               requiredFields.forEach((field) => {
                 newForm[field.fieldId] = e.target.checked
                   ? field.exampleValue
-                  : "";
+                  : '';
               });
               setFormState(newForm);
             }}
@@ -134,17 +135,22 @@ const Messages = () => {
     );
   };
 
-  const renderProvisioningResponse = (msg) => {
+  const renderProvisioningResponse = (msg, key) => {
     const { delegated_to, tool_result } = msg.content;
     const service = tool_result?.service;
+    const shouldRenderPipeline =
+      tool_result?.details?.response?.status === 200 &&
+      tool_result?.details?.response?.message === 'Pipeline Triggered';
+
     const shouldRenderForm =
-      delegated_to?.includes("provision_agent") &&
+      delegated_to?.includes('provision_agent') &&
       service?.requiredFields?.length > 0;
 
     return (
-     <>
-     {shouldRenderForm && renderForm(service)}
-     </>
+      <>
+        {shouldRenderForm && renderForm(service)}
+        {shouldRenderPipeline && <RenderProvisionLogs key={key} toolResult={tool_result} />}
+      </>
     );
   };
 
@@ -166,8 +172,7 @@ const Messages = () => {
         chatHistory?.messages?.map((msg, index) => {
           const avatar = getAvatar(msg.role);
 
-          if (msg.role === "assistant") {
-          
+          if (msg.role === 'assistant') {
             return (
               <div key={index} className="flex flex-col items-start">
                 <div className="flex items-start">
@@ -179,10 +184,12 @@ const Messages = () => {
                   <div className="flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
                     <div>
                       <p>{msg.content.response}</p>
-                      
-                      {msg.content.delegated_to === 'provision_agent_tool' && renderProvisioningResponse(msg)}
-                      {msg.content.delegated_to === 'recommendations_agent_tool' && renderRecommendationsResponse(msg)}
-                      
+
+                      {msg.content.delegated_to === 'provision_agent_tool' &&
+                        renderProvisioningResponse(msg, `${index}-provisioning-response`)}
+                      {msg.content.delegated_to ===
+                        'recommendations_agent_tool' &&
+                        renderRecommendationsResponse(msg)}
                     </div>
                   </div>
                 </div>
