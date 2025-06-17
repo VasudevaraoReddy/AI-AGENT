@@ -1,13 +1,15 @@
-import { Navigate } from 'react-router-dom';
+import React from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+import { useChatContext } from '../context/ChatContext';
 
-const ProtectedRoute = ({ children }) => {
-  const user = localStorage.getItem('user');
-  
-  if (!user) {
-    return <Navigate to="/" replace />;
+function ProtectedRoute() {
+  const { currentUser, authLoading } = useChatContext();
+
+  if (authLoading) {
+    return <div className="text-center mt-10">Checking authentication...</div>; // Or a spinner
   }
 
-  return children;
-};
+  return currentUser ? <Outlet /> : <Navigate to="/login" replace />;
+}
 
-export default ProtectedRoute; 
+export default ProtectedRoute;

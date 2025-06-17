@@ -4,7 +4,8 @@ import { useChatContext } from '../context/ChatContext';
 
 const CSPSelection = () => {
   const navigate = useNavigate();
-  const { setCurrentCSP, setChatHistory } = useChatContext();
+  const { setCurrentCSP, setChatHistory, setConversations, conversations } =
+    useChatContext();
   const [selectedCSP, setSelectedCSP] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -13,20 +14,23 @@ const CSPSelection = () => {
       id: 'aws',
       name: 'Amazon Web Services',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg',
-      description: 'Amazon Web Services (AWS) is a comprehensive cloud computing platform'
+      description:
+        'Amazon Web Services (AWS) is a comprehensive cloud computing platform',
     },
     {
       id: 'azure',
       name: 'Microsoft Azure',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Microsoft_Azure.svg',
-      description: 'Microsoft Azure is a cloud computing service created by Microsoft'
+      description:
+        'Microsoft Azure is a cloud computing service created by Microsoft',
     },
     {
       id: 'gcp',
       name: 'Google Cloud Platform',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg',
-      description: 'Google Cloud Platform is a suite of cloud computing services'
-    }
+      description:
+        'Google Cloud Platform is a suite of cloud computing services',
+    },
   ];
 
   const handleCSPSelection = async (cspId) => {
@@ -35,12 +39,15 @@ const CSPSelection = () => {
       setSelectedCSP(cspId);
       setCurrentCSP(cspId);
       setChatHistory({});
-      
-      
+
       // Update user's CSP preference in localStorage
-      const user = JSON.parse(localStorage.getItem('user'));
-      localStorage.setItem('user', JSON.stringify({ ...user, csp: cspId }));
-      
+      const user = JSON.parse(localStorage.getItem('AIUSER'));
+      localStorage.setItem('AIUSER', JSON.stringify({ ...user, csp: cspId }));
+      setConversations([
+        ...conversations,
+        { chatTitle: 'New Chat', csp: cspId, date: new Date().toDateString() },
+      ]);
+
       // Navigate to home after a short delay to show the selection
       setTimeout(() => {
         navigate('/home');
@@ -84,7 +91,9 @@ const CSPSelection = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="focus:outline-none">
-                  <p className="text-sm font-medium text-[#333333]">{csp.name}</p>
+                  <p className="text-sm font-medium text-[#333333]">
+                    {csp.name}
+                  </p>
                   <p className="text-sm text-[#999999]">{csp.description}</p>
                 </div>
               </div>
@@ -102,7 +111,9 @@ const CSPSelection = () => {
         {loading && (
           <div className="mt-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#ffe600] border-t-transparent"></div>
-            <p className="mt-2 text-sm text-[#cccccc]">Setting up your environment...</p>
+            <p className="mt-2 text-sm text-[#cccccc]">
+              Setting up your environment...
+            </p>
           </div>
         )}
       </div>
@@ -110,4 +121,4 @@ const CSPSelection = () => {
   );
 };
 
-export default CSPSelection; 
+export default CSPSelection;

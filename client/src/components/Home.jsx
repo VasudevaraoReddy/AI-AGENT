@@ -8,7 +8,7 @@ const Home = () => {
   const { currentCSP } = useChatContext();
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
+    const user = localStorage.getItem('AIUSER');
     if (!user) {
       navigate('/login');
     }

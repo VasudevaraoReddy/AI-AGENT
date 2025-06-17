@@ -45,7 +45,6 @@ const Messages = () => {
       message: `Go ahead and deploy the ${service.title} with below values`,
       payload: payload,
     });
-
   };
 
   const renderForm = (service) => {
@@ -65,7 +64,7 @@ const Messages = () => {
       <div className="mt-4 space-y-4 rounded-lg bg-slate-100 p-4 dark:bg-slate-700">
         {requiredFields.map((field) => (
           <div key={field.fieldId}>
-            <label className="block text-sm font-medium flex items-center gap-1">
+            <label className="flex text-sm font-medium items-center gap-1">
               {field.fieldName}
               {field.explanation && (
                 <div className="relative group cursor-pointer">
@@ -148,8 +147,12 @@ const Messages = () => {
 
     return (
       <>
+        {/* <strong>Summary</strong>
+        <ReactMarkdown>{msg.content.supervisorResponse}</ReactMarkdown> */}
         {shouldRenderForm && renderForm(service)}
-        {shouldRenderPipeline && <RenderProvisionLogs key={key} toolResult={tool_result} />}
+        {shouldRenderPipeline && (
+          <RenderProvisionLogs key={key} toolResult={tool_result} />
+        )}
       </>
     );
   };
@@ -164,52 +167,68 @@ const Messages = () => {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto rounded-xl bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7">
-      {loading ? (
-        <div className="flex justify-center items-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
-        </div>
-      ) : (
-        chatHistory?.messages?.map((msg, index) => {
-          const avatar = getAvatar(msg.role);
+      {chatHistory?.messages?.map((msg, index) => {
+        const avatar = getAvatar(msg.role);
 
-          if (msg.role === 'assistant') {
-            return (
-              <div key={index} className="flex flex-col items-start">
-                <div className="flex items-start">
-                  <img
-                    className="mr-2 h-8 w-8 rounded-full"
-                    src={avatar.src}
-                    alt={avatar.alt}
-                  />
-                  <div className="flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
-                    <div>
-                      <p>{msg.content.response}</p>
-
-                      {msg.content.delegated_to === 'provision_agent_tool' &&
-                        renderProvisioningResponse(msg, `${index}-provisioning-response`)}
-                      {msg.content.delegated_to ===
-                        'recommendations_agent_tool' &&
-                        renderRecommendationsResponse(msg)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          } else {
-            return (
-              <div key={index} className="flex flex-row-reverse items-start">
+        if (msg.role === 'assistant') {
+          return (
+            <div key={index} className="flex flex-col items-start">
+              <div className="flex items-start">
                 <img
-                  className="ml-2 h-8 w-8 rounded-full"
+                  className="mr-2 h-8 w-8 rounded-full"
                   src={avatar.src}
                   alt={avatar.alt}
                 />
-                <div className="flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl">
-                  <p>{msg.content}</p>
+                <div className="flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
+                  <div>
+                    <p>{msg.content.response}</p>
+
+                    {msg.content.delegated_to === 'provision_agent_tool' &&
+                      renderProvisioningResponse(
+                        msg,
+                        `${index}-provisioning-response`,
+                      )}
+                    {msg.content.delegated_to ===
+                      'recommendations_agent_tool' &&
+                      renderRecommendationsResponse(msg)}
+                  </div>
                 </div>
               </div>
-            );
-          }
-        })
+            </div>
+          );
+        } else {
+          return (
+            <div key={index} className="flex flex-row-reverse items-start">
+              <img
+                className="ml-2 h-8 w-8 rounded-full"
+                src={avatar.src}
+                alt={avatar.alt}
+              />
+              <div className="flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl">
+                <p>{msg.content}</p>
+              </div>
+            </div>
+          );
+        }
+      })}
+      {loading && (
+        <div className="flex flex-col items-start">
+          <div className="flex items-start">
+            <img
+              className="mr-2 h-8 w-8 rounded-full"
+              src="https://dummyimage.com/128x128/354ea1/ffffff&text=CM"
+              alt="Assistant"
+            />
+            <div className="flex items-center rounded-b-xl rounded-tr-xl bg-slate-50 px-4 py-2 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                <span className="text-slate-600 dark:text-slate-300 text-sm">
+                  Thinking...
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       <div ref={messagesEndRef} />
     </div>

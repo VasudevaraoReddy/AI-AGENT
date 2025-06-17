@@ -3,9 +3,9 @@ import { z } from 'zod';
 import axios from 'axios';
 import { ChatOllama } from '@langchain/ollama';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
-import * as dotenv from 'dotenv'
+import * as dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
 
 // Create LLM instance for service determination
 const llm = new ChatOllama({
@@ -196,23 +196,26 @@ const serviceConfigTool = tool(
       //     `http://localhost:3001/services/filter?name=${encodeURIComponent(serviceInfo.service)}&cloud=${csp}`,
       // );
 
-      const allServices = await axios.get(
+      const allServicesResponse = await axios.get(
         'http://10.95.108.11:4000/infra-provision-service/allInfraServices',
       );
 
-      const filteredService = allServices.data?.filter((service: any) => {
+      const allServicesData = Array.isArray(allServicesResponse.data)
+        ? allServicesResponse.data
+        : [];
+
+      const filteredService = allServicesData.filter((service: any) => {
         const cloudMatch =
-          service?.cloudType.toLowerCase() === csp.toLowerCase();
-        console.log('cMatch', cloudMatch);
+          service?.cloudType?.toLowerCase() === csp.toLowerCase();
         const nameMatch = service?.title
-          .toLowerCase()
-          ?.includes(serviceInfo?.service?.toLowerCase());
-        console.log(nameMatch);
+          ?.toLowerCase()
+          .includes(serviceInfo?.service?.toLowerCase());
+        console.log('cloudMatch:', cloudMatch, 'nameMatch:', nameMatch);
         return cloudMatch && nameMatch;
       });
 
       const serviceConfig = {
-        data: [...filteredService],
+        data: filteredService, // filteredService is always an array, empty if no match
       };
 
       console.log('Service configuration:', serviceConfig.data);

@@ -57,8 +57,9 @@ export class SupervisorAgentService {
       const systemPrompt = this.getToolSpecificPrompt(executedTool);
       const formattedSystemPrompt = systemPrompt.replace(
         '{toolObservation}',
-        toolObservation,
+        JSON.stringify(toolObservation),
       );
+      console.log(formattedSystemPrompt);
 
       const result = await llm.invoke([
         new SystemMessage(formattedSystemPrompt),
@@ -86,84 +87,81 @@ export class SupervisorAgentService {
 
   private getToolSpecificPrompt(executedTool: string): string {
     const baseRules = `
-          RULES:
-          1. Keep the tone professional but conversational
-          2. Be specific about the results
-          3. If there are issues or errors, explain them clearly
-          4. Do not include any words like "Here is the tool response" in your summary
-          5. Do not include phrases like "Here's a summary" or "Tool response shows"
-          6. Start directly with the key points
-          7. Never describe the JSON structure. Only summarize real content.
-          8. Do not include any words like "Here is the tool response" in your summary.
-          9. Loop over the recommendations and summarize them in a concise manner.
-          `;
+RULES:
+1. Keep the tone professional and informative.
+2. Only summarize what is present in the toolObservation. Do not infer or guess missing details.
+3. If information like resource name or configuration is missing, clearly state it as "Not provided".
+4. Never assume the use of EC2 or any other specific service unless explicitly mentioned in the toolObservation.
+5. Do not describe JSON structure. Only analyze and summarize real content.
+6. No phrases like "Here is", "Tool response shows", or "Here's a summary".
+7. Output should be clear, factual, and to the point, using bullet points.
+8. Start directly with analysis. Do not add introductory or closing statements.
+9. If an error or unsupported service is detected, summarize the exact error and message.
+
+Tool Observation: {toolObservation}
+`;
 
     switch (executedTool) {
       case 'recommendations_agent_tool':
         return `
-        You are analyzing cloud infrastructure recommendations.
+You are analyzing cloud infrastructure recommendations provided by a tool scan.
 
-        Your task is to summarize real security or performance recommendations extracted from a cloud provider scan.
+Your task is to summarize **only the actual recommendations** mentioned in the toolObservation.
 
+${baseRules}
 
-        ${baseRules}
+For Recommendations:
+1. If no recommendations exist, explicitly state "No recommendations found."
+2. If recommendations exist:
+   - Start with the total count.
+   - Group by category and impact (if available).
+   - For each item, extract:
+     - Issue
+     - Affected service/resource
+     - Suggested fix or guidance
+   - Always use exact service names from the data.
 
-        For Recommendations:
-        1. Start with the total number of recommendations found
-        2. Group recommendations by:
-          - Category (Security, Performance, Cost, etc.)
-          - Impact level (High, Medium, Low)
-        3. For each recommendation, highlight:
-          - The specific issue
-          - The affected resource
-          - The suggested solution
-                4. If no recommendations found:
-                  - Clearly state no recommendations for the specific service
-                  - List the services that were analyzed
-                5. Always use the exact service name from detected.service
-                6. Format in bullet points for easy reading
-        4. Never describe the JSON structure. Only summarize real content.
-        5. Do not include any words like "Here is the tool response" in your summary.
-
-        recommendations: {toolObservation}
-        Format: Return only the response text, no JSON or special formatting.`;
+Format: Return only the response text. No JSON or extra formatting.
+`;
 
       case 'provision_agent_tool':
         return `
-        You are analyzing cloud resource provisioning results.
+You are analyzing a cloud resource provisioning result.
 
-        ${baseRules}
+Summarize **only the real information** present in the toolObservation.
 
-        For Provisioning:
-        1. Start with the provisioning status (success/failure)
-        2. Include:
-          - Resource type and name
-          - Configuration details
-          - Any important settings or parameters
-        3. For successful provisions:
-          - List the key configurations applied
-          - Any next steps or recommendations
-        4. For failures:
-          - Clear explanation of what went wrong
-          - Suggested remediation steps
-        5. Format in bullet points for easy reading
+${baseRules}
 
-        Format: Return only the response text, no JSON or special formatting.
-        `;
+For Provisioning:
+1. Start with provisioning status: Success or Failure.
+2. If failed, summarize:
+   - Reason for failure
+   - Suggested remediation (if available)
+3. If successful, extract:
+   - Resource name/type (if provided)
+   - Key configuration details (only if present)
+   - Any recommended next steps
+4. If any data is missing, state "Not provided".
+
+Format: Use clear bullet points. Only return the response text.
+`;
 
       default:
         return `
-        You are a cloud infrastructure supervisor that analyzes and summarizes tool responses.
+You are summarizing the result of a cloud infrastructure tool.
 
-        ${baseRules}
+Summarize **only what's explicitly in the toolObservation**.
 
-        Additional Rules:
-        1. Include relevant numbers and statistics when available
-        2. Generate summary in points format
-        3. Focus on key outcomes and important details
+${baseRules}
 
-        Format: Return only the response text, no JSON or special formatting.
-        `;
+For General Summaries:
+1. List key facts, stats, or outcomes that are explicitly stated.
+2. If the tool failed or returned an error, summarize the exact failure reason.
+3. Do not invent or interpret missing values.
+4. Use bullet points. Be direct and factual.
+
+Format: Return only the response text.
+`;
     }
   }
 
@@ -284,21 +282,22 @@ export class SupervisorAgentService {
         },
       });
 
-      // Handle the result
-      const executedTool =
-        result.intermediateSteps?.[0]?.action?.tool || 'unknown';
-      let toolObservation = this.parseToolObservation(
-        result.intermediateSteps[0].observation,
-        message, // Pass the user message to help with service detection
+      const firstStep = result.intermediateSteps?.[0];
+      const executedTool = firstStep?.action?.tool || 'unknown';
+      const toolObservation = this.parseToolObservation(
+        firstStep?.observation ?? result.output ?? 'No tool output',
+        message,
       );
 
       success = true;
 
       // Generate supervisor response using LLM
-      const supervisorResponse = await this.generateSupervisorResponse(
-        toolObservation,
-        executedTool,
-      );
+      // const supervisorResponse = await this.generateSupervisorResponse(
+      //   toolObservation,
+      //   executedTool,
+      // );
+
+      const supervisorResponse = '';
 
       // Save conversation context
       const outputResponse = toolObservation.response || result.output;

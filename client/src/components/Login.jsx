@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useChatContext } from '../context/ChatContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const { setCurrentUser, currentUser } = useChatContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,8 +27,8 @@ const Login = () => {
       console.log(data);
 
       if (response.ok) {
-        localStorage.setItem('user', JSON.stringify(data));
-        navigate('/home');
+        setCurrentUser(data);
+        localStorage.setItem('AIUSER', JSON.stringify(data)); // Persist session
       } else {
         setError(data.message || 'Login failed');
       }
@@ -35,11 +37,9 @@ const Login = () => {
     }
   };
 
-  useEffect(() => {
-    if (localStorage.getItem('user') !== null) {
-      navigate('/home');
-    }
-  }, [navigate]);
+  if (typeof currentUser !== 'undefined' && currentUser !== null) {
+    return <Navigate to="/home" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-[#333333] flex items-center justify-center px-4">
@@ -55,14 +55,20 @@ const Login = () => {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <div
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
               <span className="block sm:inline">{error}</span>
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#333333]">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-[#333333]"
+              >
                 Email address
               </label>
               <input
@@ -78,7 +84,10 @@ const Login = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[#333333]">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-[#333333]"
+              >
                 Password
               </label>
               <input

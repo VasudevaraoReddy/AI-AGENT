@@ -21,16 +21,27 @@ export class PayloadHandler {
     return PayloadHandler.instance;
   }
 
-  /**
-   * Standardizes the payload format
-   * @param payload The input payload to standardize
-   * @returns A standardized payload object
-   */
-  public standardizePayload(payload: any): StandardPayload {
+  public standardizePayload(payload: any): StandardPayload | undefined {
     try {
       // If payload is a string, try to parse it
       if (typeof payload === 'string') {
         payload = this.parseJsonString(payload);
+      }
+
+      // If payload is null, undefined, or not an object, return undefined
+      if (!payload || typeof payload !== 'object') {
+        console.warn(
+          'Empty or invalid payload received. Skipping standardization.',
+        );
+        return undefined;
+      }
+
+      // If essential fields are missing, return undefined instead of throwing
+      if (!payload.template || !payload.formData) {
+        console.warn(
+          'Missing required fields (template, formData). Skipping standardization.',
+        );
+        return undefined;
       }
 
       // Validate and transform the payload
@@ -47,11 +58,6 @@ export class PayloadHandler {
     }
   }
 
-  /**
-   * Parses a JSON string with error handling and cleanup
-   * @param jsonString The JSON string to parse
-   * @returns The parsed object
-   */
   private parseJsonString(jsonString: string): any {
     try {
       // Clean the string
@@ -96,4 +102,4 @@ export class PayloadHandler {
       throw new Error('Failed to stringify payload');
     }
   }
-} 
+}

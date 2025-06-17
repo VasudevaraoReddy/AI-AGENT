@@ -1,5 +1,6 @@
+// src/tools/deploy-tool.ts
+
 import { tool } from '@langchain/core/tools';
-import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { PayloadHandler, StandardPayload } from '../../utils/payload-handler';
@@ -12,7 +13,7 @@ const deployTool = tool(
   async ({ serviceName, payload, csp, userId }) => {
     const payloadHandler = PayloadHandler.getInstance();
 
-    // If no payload is provided or it's the default message
+    // Handle empty or missing payload
     if (!payload || payload === 'No payload provided') {
       return JSON.stringify({
         response: `Cannot deploy without configuration data. Please provide the required configuration values.`,
@@ -29,13 +30,28 @@ const deployTool = tool(
       });
     }
 
-    // Parse and standardize the payload
-    let standardizedPayload: StandardPayload;
+    let standardizedPayload: StandardPayload | undefined;
+
     try {
-      // If payload is a string, try to parse it first
       const payloadObj =
         typeof payload === 'string' ? JSON.parse(payload) : payload;
       standardizedPayload = payloadHandler.standardizePayload(payloadObj);
+
+      if (!standardizedPayload) {
+        return JSON.stringify({
+          response: `Invalid payload: missing 'template' or 'formData'.`,
+          tool_response: {
+            status: 'error',
+            message: 'Invalid payload format',
+            details: {
+              status: 'error',
+              error: 'Payload must include both "template" and "formData".',
+              provider: csp,
+              service: serviceName,
+            },
+          },
+        });
+      }
     } catch (error) {
       console.error('Payload parsing error:', error);
       return JSON.stringify({
@@ -53,19 +69,17 @@ const deployTool = tool(
       });
     }
 
-    const formData = standardizedPayload.formData;
-    const template = standardizedPayload.template;
+    const { formData, template } = standardizedPayload;
 
-    // Basic input validation
     if (!formData || Object.keys(formData).length === 0) {
       return JSON.stringify({
-        response: `Cannot deploy without configuration data. Please provide the required configuration values.`,
+        response: `Cannot deploy without configuration data.`,
         tool_response: {
           status: 'error',
-          message: 'Missing or empty configuration data',
+          message: 'Empty configuration data',
           details: {
             status: 'error',
-            error: 'Configuration data is required for deployment',
+            error: 'Form data is required for deployment',
             provider: csp,
             service: serviceName,
           },
@@ -74,13 +88,6 @@ const deployTool = tool(
     }
 
     try {
-      console.log('Initiating deployment:', {
-        serviceName,
-        csp,
-        userId,
-        formData,
-      });
-
       const deploymentId = uuidv4();
       const tfVariables: any = await getTerraformVariables();
       if (tfVariables?.length > 0) {
@@ -88,65 +95,45 @@ const deployTool = tool(
           variableName: key,
           newValue: formData[key],
         }));
-        let newUpdatedFormValues = {};
-        modifiedData.map((eachData) => {
-          const variableObject = tfVariables.find((obj) =>
-            obj.hasOwnProperty(eachData?.variableName),
+        const newUpdatedFormValues = {};
+
+        modifiedData.forEach(({ variableName, newValue }) => {
+          const tfVar = tfVariables.find((obj) =>
+            Object.prototype.hasOwnProperty.call(obj, variableName),
           );
-          if (variableObject) {
-            newUpdatedFormValues[variableObject[eachData?.variableName]] =
-              eachData?.newValue;
+          if (tfVar) {
+            newUpdatedFormValues[tfVar[variableName]] = newValue;
           } else {
-            newUpdatedFormValues[eachData?.variableName] = eachData?.newValue;
+            newUpdatedFormValues[variableName] = newValue;
           }
         });
 
-        console.log(newUpdatedFormValues);
+        const response = await updateJsonInDevOps(
+          template,
+          newUpdatedFormValues,
+          userId,
+          'AGENT',
+          'Destroy',
+        );
 
-        try {
-          const response = await updateJsonInDevOps(
-            template,
-            newUpdatedFormValues,
-            userId,
-            'AGENT',
-            'Destroy',
-          );
-
-          console.log(response);
-
-          const deploymentRequest = {
-            deploymentId,
-            userId,
-            service: {
-              name: serviceName,
-              provider: csp.toLowerCase(),
-              configuration: formData,
-            },
-            template: template || null,
-            timestamp: new Date().toISOString(),
-          };
-
-          return JSON.stringify({
-            response: `Platform has initiated infrastructure provisioning for ${serviceName}`,
-            tool_response: {
-              status: 'success',
-              message: `Successfully initiated infrastructure provisioning for ${serviceName}`,
-              details: {
-                status: 'in_progress',
-                provider: csp,
-                service: serviceName,
-                configuration: {
-                  originalData: formData,
-                  modifiedData,
-                },
-                deploymentId,
-                response
+        return JSON.stringify({
+          response: `Platform has initiated infrastructure provisioning for ${serviceName}`,
+          tool_response: {
+            status: 'success',
+            message: `Successfully initiated infrastructure provisioning for ${serviceName}`,
+            details: {
+              status: 'in_progress',
+              provider: csp,
+              service: serviceName,
+              configuration: {
+                originalData: formData,
+                modifiedData,
               },
+              deploymentId,
+              response,
             },
-          });
-        } catch (error) {
-          console.log(error);
-        }
+          },
+        });
       }
     } catch (error: any) {
       console.error('Deployment error:', error);
@@ -177,9 +164,7 @@ const deployTool = tool(
         .describe('The cloud service provider (AWS, Azure, GCP, or Oracle)'),
       payload: z
         .any()
-        .describe(
-          'Configuration data for the deployment (can be string or object)',
-        ),
+        .describe('Configuration data for deployment (string or object)'),
     }),
   },
 );
