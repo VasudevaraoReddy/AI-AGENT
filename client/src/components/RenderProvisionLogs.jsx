@@ -5,7 +5,7 @@ import {
 } from '../services/AzureDevopsService';
 import { X } from 'lucide-react';
 
-const RenderProvisionLogs = ({ toolResult }) => {
+const RenderProvisionLogs = ({ devopsResponse }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [logs, setLogs] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,15 +13,17 @@ const RenderProvisionLogs = ({ toolResult }) => {
   const [pipelineData, setPipelineStatusRes] = useState({});
   const [errorLogs, setErrorLogs] = useState([]);
 
-  const responseId = toolResult?.details?.response?.id;
-
+  
+  const responseId = devopsResponse?.id;
+  console.log(devopsResponse?.templateParameters?.moduleToRun, "Inside", responseId)
+  
   useEffect(() => {
     let intervalId;
 
     const fetchStatusAndMaybePoll = async () => {
       const response = await getPipelineStatus(
         responseId,
-        toolResult?.details?.response?.templateParameters?.moduleToRun,
+        devopsResponse?.templateParameters?.moduleToRun,
       );
       setPipelineStatusRes(response);
 
@@ -29,7 +31,7 @@ const RenderProvisionLogs = ({ toolResult }) => {
         intervalId = setInterval(async () => {
           const refreshed = await getPipelineStatus(
             responseId,
-            toolResult?.details?.response?.templateParameters?.moduleToRun,
+            devopsResponse?.templateParameters?.moduleToRun,
           );
           setPipelineStatusRes(refreshed);
 
@@ -45,7 +47,7 @@ const RenderProvisionLogs = ({ toolResult }) => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, []);
+  }, [devopsResponse]);
 
   const fetchLogs = async () => {
     setIsOpen(true);
@@ -111,7 +113,7 @@ const RenderProvisionLogs = ({ toolResult }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
             <div>
-              <strong>State:</strong> {pipelineData?.state}
+              <strong>State:</strong> {pipelineData?.state?.toLocaleUpperCase()}
             </div>
             <div>
               <strong>Result:</strong>{' '}

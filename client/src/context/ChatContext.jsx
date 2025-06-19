@@ -23,6 +23,11 @@ export const ChatProvider = ({ children }) => {
   const [chatId, setChatId] = useState(null);
   const [chatHistory, setChatHistory] = useState({});
   const [loading, setLoading] = useState(false);
+  const [messageSentLoading, setMessageSentLoading] = useState(false);
+  const [activeAndUserSelectedAgent, setActiveAndUserSelectedAgent] = useState({
+    userSelectedAgent: '',
+    activeAgent: '',
+  });
   const [currentCSP, setCurrentCSP] = useState('azure'); // Default to AWS
   const navigate = useNavigate();
 
@@ -34,15 +39,15 @@ export const ChatProvider = ({ children }) => {
 
   useEffect(() => {
     if (currentUser) {
-      loadChatHistory(currentUser?.userId);
+      loadChatConversations(currentUser?.userId);
     }
   }, [currentUser]);
 
-  const loadChatHistory = async (userId) => {
+  const loadChatConversations = async (userId) => {
     try {
       setLoading(true);
       const data = await getUserConversations(userId);
-      setConversations(data.chats);
+      setConversations(data);
 
       // Extract current CSP from history
       if (data && data.csp) {
@@ -74,71 +79,88 @@ export const ChatProvider = ({ children }) => {
     const chatHistory = await getChatHistory(chatId, currentUser?.userId);
 
     setChatHistory(chatHistory);
+    setActiveAndUserSelectedAgent({
+      ...activeAndUserSelectedAgent,
+      activeAgent: chatHistory?.extra_info?.active_agent,
+    });
+  };
+
+  const refreshChat = async () => {
+    if (!currentUser?.userId || !chatId) return;
+    await loadChatConversations(currentUser.userId);
+    // const chatHistory = await getChatHistory(chatId, currentUser.userId);
+    // setChatHistory(chatHistory);
+  };
+
+  const createMessagePayload = (message) => {
+    const base = {
+      user_input: typeof message === 'string' ? message : message?.message,
+      userId: currentUser?.userId,
+      conversation_id: chatId,
+      csp: currentCSP,
+      userSelectedAgent: activeAndUserSelectedAgent.userSelectedAgent,
+    };
+
+    if (typeof message !== 'string') {
+      base.formData = {
+        template: message?.payload?.service?.template,
+        formData: message?.payload?.formData,
+        serviceDeploymentId: message?.payload?.serviceDeploymentId
+      };
+    }
+
+    return base;
   };
 
   const handleSendMessage = async (message) => {
-    if (typeof message === 'string') {
-      try {
-        setLoading(true);
-
-        if (!currentUser) {
-          throw new Error('No user selected');
-        }
-
-        const response = await processQuery({
-          message,
-          userId: currentUser?.userId,
-          chatId,
-          csp: currentCSP,
-        });
-
-        // Update chat history after sending message
-        await loadChatHistory(currentUser?.userId);
-
-        const chatHistory = await getChatHistory(chatId, currentUser?.userId);
-
-        setChatHistory(chatHistory);
-
-        setLoading(false);
-        return response;
-      } catch (error) {
-        toast.error('Failed to send Message');
-        setLoading(false);
-        throw error;
-      }
-    } else {
-      try {
-        setLoading(true);
-
-        if (!currentUser) {
-          throw new Error('No user selected');
-        }
-
-        const response = await processQuery({
-          message: message?.message,
-          userId: currentUser?.userId,
-          chatId,
-          csp: currentCSP,
-          payload: {
-            template: message?.payload?.service?.template,
-            formData: message?.payload?.formData,
+    try {
+      setChatHistory((prev) => ({
+        ...prev,
+        messages: [
+          ...(prev?.messages || []),
+          {
+            type: 'human',
+            content: typeof message === 'string' ? message : message?.message,
           },
-        });
+        ],
+      }));
+      setMessageSentLoading(true);
+      const payload = createMessagePayload(message);
+      const response = await processQuery(payload);
 
-        // Update chat history after sending message
-        await loadChatHistory(currentUser?.userId);
+      setActiveAndUserSelectedAgent((prev) => ({
+        ...prev,
+        activeAgent: response?.extra_info?.active_agent,
+      }));
 
-        const chatHistory = await getChatHistory(chatId, currentUser?.userId);
+      const lastMessage =
+        Array.isArray(response?.messages) && response?.messages.length > 0
+          ? response.messages[response.messages.length - 1]
+          : null;
 
-        setChatHistory(chatHistory);
+      setChatHistory((prev) => ({
+        ...prev,
+        messages: [
+          ...(prev?.messages || []),
+          ...(lastMessage ? [lastMessage] : []),
+        ],
+        extra_info: response?.extra_info,
+      }));
 
-        setLoading(false);
-        return response;
-      } catch (error) {
-        toast.error('Failed to send Message');
-        setLoading(false);
-        throw error;
-      }
+      setMessageSentLoading(false);
+
+      await refreshChat();
+
+      return response;
+    } catch (error) {
+      toast.error('Failed to send Message');
+      setChatHistory((prev) => ({
+        ...prev,
+        messages: (prev?.messages || []).slice(0, -1),
+      }));
+      throw error;
+    } finally {
+      setMessageSentLoading(false);
     }
   };
 
@@ -156,7 +178,10 @@ export const ChatProvider = ({ children }) => {
     setConversations,
     currentChatId: chatId,
     setChatHistory,
-    refreshHistory: () => loadChatHistory(currentUser?.userId),
+    messageSentLoading,
+    setActiveAndUserSelectedAgent,
+    activeAndUserSelectedAgent,
+    refreshHistory: () => loadChatConversations(currentUser?.userId),
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

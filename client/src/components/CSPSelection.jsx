@@ -4,8 +4,13 @@ import { useChatContext } from '../context/ChatContext';
 
 const CSPSelection = () => {
   const navigate = useNavigate();
-  const { setCurrentCSP, setChatHistory, setConversations, conversations } =
-    useChatContext();
+  const {
+    setCurrentCSP,
+    setChatHistory,
+    setConversations,
+    conversations,
+    setActiveAndUserSelectedAgent,
+  } = useChatContext();
   const [selectedCSP, setSelectedCSP] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +44,10 @@ const CSPSelection = () => {
       setSelectedCSP(cspId);
       setCurrentCSP(cspId);
       setChatHistory({});
+      setActiveAndUserSelectedAgent({
+        userSelectedAgent: '',
+        activeAgent: '',
+      });
 
       // Update user's CSP preference in localStorage
       const user = JSON.parse(localStorage.getItem('AIUSER'));

@@ -41,6 +41,33 @@ const CSPBadge = ({ csp }) => {
   );
 };
 
+const getRelativeTime = (date) => {
+  const now = new Date();
+  const diff = Math.floor((now - new Date(date)) / 1000); // in seconds
+
+  const units = [
+    { unit: 'year', value: 60 * 60 * 24 * 365 },
+    { unit: 'month', value: 60 * 60 * 24 * 30 },
+    { unit: 'week', value: 60 * 60 * 24 * 7 },
+    { unit: 'day', value: 60 * 60 * 24 },
+    { unit: 'hour', value: 60 * 60 },
+    { unit: 'minute', value: 60 },
+    { unit: 'second', value: 1 },
+  ];
+
+  for (const { unit, value } of units) {
+    const amount = Math.floor(diff / value);
+    if (amount > 0) {
+      return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
+        -amount,
+        unit,
+      );
+    }
+  }
+
+  return 'just now';
+};
+
 const SideBar = () => {
   const navigate = useNavigate();
   const {
@@ -100,29 +127,28 @@ const SideBar = () => {
         <div className="h-1/2 space-y-4 overflow-y-auto border-b border-slate-300 px-2 py-4 dark:border-slate-700">
           {conversations?.map((chat, idx) => (
             <button
-              key={chat.chatId + idx}
-              onClick={() => handleChatClick(chat.chatId, chat.csp)}
+              key={chat?.conversationId + idx}
+              onClick={() => handleChatClick(chat.conversationId, chat?.csp)}
               className={`cursor-pointer flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors duration-200 focus:outline-none dark:hover:bg-slate-800 ${
-                chat.chatId === currentChatId
+                chat.conversationId === currentChatId
                   ? 'bg-slate-200'
                   : 'hover:bg-slate-200'
               }`}
             >
               <span className="text-sm font-medium truncate text-slate-700 dark:text-slate-200">
-                {chat.chatTitle}
+                Chat {chat?.conversationId}
               </span>
-              <CSPBadge csp={chat.csp} />
+              <CSPBadge csp={chat?.csp} />
             </button>
           ))}
         </div>
         <div className="px-2 py-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            You last logged in on{' '}
-            {new Date(currentUser?.lastLogin).toLocaleString()}
+            Last login: {getRelativeTime(currentUser?.lastLogin)}
           </p>
         </div>
         <hr className="border-slate-300 dark:border-slate-700" />
-        <div className="mt-auto w-full space-y-4 px-2 py-4">
+        <div className="w-full space-y-4 px-2 py-4">
           <button
             onClick={handleLogout}
             className="cursor-pointer flex w-full gap-x-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-200 dark:hover:bg-slate-800"

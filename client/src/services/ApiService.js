@@ -1,11 +1,11 @@
-import axios from "axios";
+import axios from 'axios';
 
-const API_URL = "http://localhost:3001/";
+const API_URL = 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
 
@@ -17,7 +17,7 @@ const api = axios.create({
  * @returns {Promise<Object>} User data
  */
 export const login = async (credentials) => {
-  const response = await api.post("/auth/login", credentials);
+  const response = await api.post('/auth/login', credentials);
   return response.data;
 };
 
@@ -29,7 +29,7 @@ export const login = async (credentials) => {
  * @returns {Promise<Object>} User data
  */
 export const register = async (userData) => {
-  const response = await api.post("/auth/register", userData);
+  const response = await api.post('/auth/register', userData);
   return response.data;
 };
 
@@ -43,7 +43,7 @@ export const register = async (userData) => {
  * @returns {Promise<Object>} Response from the agent system
  */
 export const processQuery = async (body) => {
-  const response = await api.post("/process-query", body);
+  const response = await api.post('/process-query', body);
   return response.data;
 };
 
@@ -52,29 +52,21 @@ export const processQuery = async (body) => {
  * @returns {Promise<Object>} System metrics data
  */
 export const getMetrics = async () => {
-  const response = await api.post("/metrics");
+  const response = await api.post('/metrics');
   return response.data;
 };
 
-/**
- * Get conversation history for a specific user
- * @param {string} userId - User identifier
- * @returns {Promise<Object>} User conversation history
- */
 export const getUserConversations = async (userId) => {
-  const response = await api.post("/conversations", { userId });
+  const response = await api.get('/conversations');
   return response.data;
 };
 
 export const getChatHistory = async (chatId, userId) => {
   try {
-    const response = await api.post(`/conversations/${userId}/${chatId}`, {
-      chatId,
-      userId,
-    });
+    const response = await api.get(`/get-conversation/${userId}/${chatId}`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching chat history:", error);
+    console.error('Error fetching chat history:', error);
     throw error;
   }
 };
