@@ -570,8 +570,14 @@ const Messages = () => {
                 src={avatar.src}
                 alt={avatar.alt}
               />
-              <div className="flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl">
-                <p>{msg.content}</p>
+              <div className="flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 sm:min-h-0 sm:max-w-md md:max-w-2xl overflow-x-auto">
+                {msg.content?.startsWith('These are the errors') ? (
+                  <p className="inline-block bg-red-100 text-red-700 text-sm font-semibold px-3 py-1 rounded-full shadow-sm">
+                    Analyze the Errors
+                  </p>
+                ) : (
+                  <p>{msg.content}</p>
+                )}
               </div>
             </div>
           );

@@ -3,7 +3,8 @@ import {
   getPipelineLogs,
   getPipelineStatus,
 } from '../services/AzureDevopsService';
-import { X } from 'lucide-react';
+import { X, AlertTriangle, Loader2, CircleCheckBig } from 'lucide-react';
+import { useChatContext } from '../context/ChatContext';
 
 const RenderProvisionLogs = ({ devopsResponse }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,11 +13,10 @@ const RenderProvisionLogs = ({ devopsResponse }) => {
   const [error, setError] = useState(null);
   const [pipelineData, setPipelineStatusRes] = useState({});
   const [errorLogs, setErrorLogs] = useState([]);
+  const { sendMessage } = useChatContext();
 
-  
   const responseId = devopsResponse?.id;
-  console.log(devopsResponse?.templateParameters?.moduleToRun, "Inside", responseId)
-  
+
   useEffect(() => {
     let intervalId;
 
@@ -49,10 +49,7 @@ const RenderProvisionLogs = ({ devopsResponse }) => {
     };
   }, [devopsResponse]);
 
-  const fetchLogs = async () => {
-    setIsOpen(true);
-    setLoading(true);
-    setError(null);
+  const fetchLogs_ = async () => {
     try {
       const response = await getPipelineLogs(responseId);
       const cleanedLogs = response?.filter(
@@ -72,12 +69,21 @@ const RenderProvisionLogs = ({ devopsResponse }) => {
           }
         });
       });
-      setErrorLogs(redLogs);
+      setErrorLogs(redLogs); // still update state for logs modal
+      return redLogs; // 🆕
     } catch (err) {
       setError(err.message);
+      return [];
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchLogs = async () => {
+    setIsOpen(true);
+    setLoading(true);
+    setError(null);
+    await fetchLogs_();
   };
 
   const cleanLogString = (log) => {
@@ -105,52 +111,117 @@ const RenderProvisionLogs = ({ devopsResponse }) => {
     }
   };
 
+  const handleAnalyzeErrors = async () => {
+    const latestErrors = await fetchLogs_();
+    if (latestErrors.length > 0) {
+      const errors = latestErrors.join('\n');
+      await sendMessage(
+        `These are the errors:\n${errors}\nCan you help me understand?`,
+      );
+    }
+  };
+
+  const getDuration = (start, end) => {
+    const startTime = new Date(start);
+    const endTime = new Date(end);
+    const diffMs = endTime - startTime;
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes === 0) return `${seconds} sec`;
+    return `${minutes} min ${seconds} sec`;
+  };
+
   return (
     <div className="p-1">
       {pipelineData && (
         <div>
-          <p className="font-semibold text-gray-800 mb-4">Run Details</p>
+          <p className="font-semibold text-gray-800 mb-1">Run Details</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-            <div>
-              <strong>State:</strong> {pipelineData?.state?.toLocaleUpperCase()}
-            </div>
-            <div>
-              <strong>Result:</strong>{' '}
-              <span
-                className={
-                  pipelineData?.result === 'failed'
-                    ? 'text-red-600'
-                    : 'text-green-600'
-                }
-              >
-                {pipelineData?.result?.toLocaleUpperCase()}
-              </span>
-            </div>
-            <div>
-              <strong>Started At:</strong>{' '}
-              {new Date(pipelineData?.createdDate).toUTCString()}
-            </div>
-            <div>
-              <strong>Finished At:</strong>{' '}
-              {pipelineData?.finishedDate &&
-              !isNaN(new Date(pipelineData.finishedDate).getTime())
-                ? new Date(pipelineData.finishedDate).toUTCString()
-                : 'Not yet finished'}
+          <div
+            className={`bg-white border-l-4 shadow-md rounded-md p-5 mb-6 relative ${
+              pipelineData?.result === 'failed'
+                ? 'border-red-500'
+                : 'border-green-500'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {pipelineData?.state === 'completed' ? (
+                <>
+                  {pipelineData?.result === 'failed' ? (
+                    <AlertTriangle className={`mt-0.5 text-red-500`} />
+                  ) : (
+                    <CircleCheckBig className={`mt-0.5 text-green-500`} />
+                  )}
+
+                  <div className="flex-1">
+                    <h4
+                      className={`text-md font-semibold mb-1 ${
+                        pipelineData?.result === 'failed'
+                          ? 'text-red-600'
+                          : 'text-["#22bb33"]'
+                      }`}
+                    >
+                      Deployment {pipelineData?.result?.toUpperCase()}
+                    </h4>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {pipelineData?.result === 'failed'
+                        ? 'Something went wrong while provisioning your infrastructure.'
+                        : 'Infrastructure was provisioned successfully.'}
+                    </p>
+
+                    {pipelineData?.createdDate &&
+                      pipelineData?.finishedDate &&
+                      !isNaN(new Date(pipelineData.finishedDate).getTime()) && (
+                        <p className="text-sm text-gray-500 mb-2">
+                          Duration:{' '}
+                          {getDuration(
+                            pipelineData.createdDate,
+                            pipelineData.finishedDate,
+                          )}
+                        </p>
+                      )}
+
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={fetchLogs}
+                        className="px-4 py-2 cursor-pointer text-sm font-medium border border-gray-600 text-gray-800 hover:bg-gray-100 rounded-md transition"
+                      >
+                        View Logs
+                      </button>
+
+                      {pipelineData?.result === 'failed' && (
+                        <button
+                          onClick={handleAnalyzeErrors}
+                          className="bg-black ml-2 cursor-pointer text-white text-sm px-3 py-1.5 rounded hover:bg-gray-900 transition"
+                        >
+                          Analyze Errors
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Loader2 className="animate-spin text-blue-500" />
+                  <p className="text-gray-600 font-medium">
+                    Checking provisioning status...
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-
-          <button
-            onClick={fetchLogs}
-            className="border border-black cursor-pointer mt-2 text-blacl px-3 py-1 rounded"
-          >
-            View Logs
-          </button>
         </div>
       )}
 
       {isOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
+          {/* Dimmed, blurred, non-clickable background */}
+          <div className="absolute inset-0 bg-white/30 backdrop-blur-sm pointer-events-none"></div>
+
+          {/* Modal content */}
           <div className="bg-white w-[60%] rounded-lg shadow-2xl p-4 max-h-[90vh] overflow-y-auto relative">
             <h2 className="text-xl font-semibold mb-3">Console Logs</h2>
 
@@ -158,23 +229,25 @@ const RenderProvisionLogs = ({ devopsResponse }) => {
               {loading && <p className="text-gray-300">Loading logs...</p>}
               {error && <p className="text-red-500">{error}</p>}
 
-              {!loading &&
-                !error &&
-                logs.length > 0 &&
-                logs.map(
-                  (eachLog, outerIdx) =>
-                    eachLog.count > 0 &&
-                    eachLog.value.map((log, index) => (
-                      <div key={`${outerIdx}-${index}`} className="flex gap-2">
-                        <span className={`text-xs ${getLogColor(log)}`}>
-                          {index + 1}.
-                        </span>
-                        <span className={`${getLogColor(log)}`}>
-                          {cleanLogString(log)}
-                        </span>
-                      </div>
-                    )),
-                )}
+              {!loading && !error && logs.length > 0
+                ? logs.map((eachLog, outerIdx) =>
+                    eachLog.count > 0
+                      ? eachLog.value.map((log, index) => (
+                          <div
+                            key={`${outerIdx}-${index}`}
+                            className="flex gap-2"
+                          >
+                            <span className={`text-xs ${getLogColor(log)}`}>
+                              {index + 1}.
+                            </span>
+                            <span className={`${getLogColor(log)}`}>
+                              {cleanLogString(log)}
+                            </span>
+                          </div>
+                        ))
+                      : null,
+                  )
+                : ''}
 
               {!loading && !error && logs.length === 0 && (
                 <p className="text-gray-400">No logs available.</p>
@@ -183,7 +256,7 @@ const RenderProvisionLogs = ({ devopsResponse }) => {
 
             <button
               onClick={() => setIsOpen(false)}
-              className="cursor-pointer absolute top-2 right-2 text-gray-500 hover:text-black text-xl"
+              className="cursor-pointer absolute top-2 right-2 text-gray-400 hover:text-black text-xl"
             >
               <X />
             </button>
