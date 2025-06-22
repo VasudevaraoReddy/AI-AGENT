@@ -8,6 +8,7 @@ const CSPSelection = () => {
     setCurrentCSP,
     setChatHistory,
     setConversations,
+    currentChatId,
     conversations,
     setActiveAndUserSelectedAgent,
   } = useChatContext();
@@ -21,6 +22,7 @@ const CSPSelection = () => {
       icon: 'https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg',
       description:
         'Amazon Web Services (AWS) is a comprehensive cloud computing platform',
+      available: false,
     },
     {
       id: 'azure',
@@ -28,6 +30,7 @@ const CSPSelection = () => {
       icon: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Microsoft_Azure.svg',
       description:
         'Microsoft Azure is a cloud computing service created by Microsoft',
+      available: true,
     },
     {
       id: 'gcp',
@@ -35,10 +38,14 @@ const CSPSelection = () => {
       icon: 'https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg',
       description:
         'Google Cloud Platform is a suite of cloud computing services',
+      available: false,
     },
   ];
 
-  const handleCSPSelection = async (cspId) => {
+  const handleCSPSelection = async (cspId, available) => {
+    if (!available) {
+      return alert('This CSP is not available yet');
+    }
     setLoading(true);
     try {
       setSelectedCSP(cspId);
@@ -54,7 +61,7 @@ const CSPSelection = () => {
       localStorage.setItem('AIUSER', JSON.stringify({ ...user, csp: cspId }));
       setConversations([
         ...conversations,
-        { chatTitle: 'New Chat', csp: cspId, date: new Date().toDateString() },
+        { chatTitle: 'New Chat', csp: cspId, date: new Date().toDateString() , conversationId: currentChatId },
       ]);
 
       // Navigate to home after a short delay to show the selection
@@ -84,7 +91,7 @@ const CSPSelection = () => {
           {cspOptions.map((csp) => (
             <div
               key={csp.id}
-              onClick={() => handleCSPSelection(csp.id)}
+              onClick={() => handleCSPSelection(csp.id, csp.available)}
               className={`relative rounded-lg border ${
                 selectedCSP === csp.id
                   ? 'border-[#ffe600] ring-2 ring-[#ffe600] bg-[#fffde6]'

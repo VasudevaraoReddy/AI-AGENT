@@ -293,7 +293,7 @@ import { useChatContext } from '../context/ChatContext';
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RenderProvisionLogs from './RenderProvisionLogs';
-
+import { Typewriter } from 'react-simple-typewriter';
 const getAvatar = (type) => {
   if (type === 'human') {
     return {
@@ -538,7 +538,7 @@ const Messages = () => {
   return (
     <div className="flex-1 space-y-6 overflow-y-auto rounded-xl bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7">
       {chatHistory?.messages?.map((msg, index) => {
-        const avatar = getAvatar(msg.role);
+        const avatar = getAvatar(msg.type);
 
         if (msg.type === 'ai') {
           return (
@@ -595,7 +595,15 @@ const Messages = () => {
               <div className="flex items-center gap-2">
                 <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
                 <span className="text-slate-600 dark:text-slate-300 text-sm">
-                  Thinking...
+                  <Typewriter
+                    words={['Thinking','Analyzing your request', 'Almost there']}
+                    loop={true}
+                    cursor
+                    cursorStyle="..."
+                    typeSpeed={70}
+                    deleteSpeed={50}
+                    delaySpeed={3000}
+                  />
                 </span>
               </div>
             </div>
