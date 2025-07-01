@@ -294,6 +294,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import RenderProvisionLogs from './RenderProvisionLogs';
 import { Typewriter } from 'react-simple-typewriter';
+import TerraformViewer from './TerraformCodeBlock/TerraformViewer';
 const getAvatar = (type) => {
   if (type === 'human') {
     return {
@@ -520,6 +521,7 @@ const Messages = () => {
 
     return (
       <>
+        <ReactMarkdown>{msg.content}</ReactMarkdown>
         {shouldRenderForm && renderForm(details?.serviceConfig, key)}
         {shouldRenderPipeline && (
           <RenderProvisionLogs
@@ -532,7 +534,19 @@ const Messages = () => {
   };
 
   const renderRecommendationsResponse = (msg) => {
-    return <></>;
+    return (
+      <>
+        <ReactMarkdown>{msg.content}</ReactMarkdown>
+      </>
+    );
+  };
+
+  const renderTerraformResponse = (msg) => {
+    return <TerraformViewer files={msg?.response_metadata?.details} />;
+  };
+
+  const renderGeneralResponse = (msg) => {
+    return <ReactMarkdown>{msg.content}</ReactMarkdown>;
   };
 
   return (
@@ -551,8 +565,10 @@ const Messages = () => {
                 />
                 <div className="flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
                   <div>
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-
+                    {msg.response_metadata?.agent === 'general_agent' && renderGeneralResponse(msg)}
+                    {msg.response_metadata?.agent ===
+                      'terraform_generator_agent' &&
+                      renderTerraformResponse(msg)}
                     {msg?.response_metadata?.agent === 'provision_agent' &&
                       renderProvisioningResponse(msg, index)}
                     {msg.response_metadata?.agent === 'recommendations_agent' &&
@@ -596,7 +612,11 @@ const Messages = () => {
                 <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
                 <span className="text-slate-600 dark:text-slate-300 text-sm">
                   <Typewriter
-                    words={['Thinking','Analyzing your request', 'Almost there']}
+                    words={[
+                      'Thinking',
+                      'Analyzing your request',
+                      'Almost there',
+                    ]}
                     loop={true}
                     cursor
                     cursorStyle="..."

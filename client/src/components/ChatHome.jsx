@@ -41,11 +41,12 @@ const ChatHome = () => {
     { value: 'general_agent', name: 'General Agent' },
     { value: 'provision_agent', name: 'Provision Agent' },
     { value: 'recommendations_agent', name: 'Recommendation Agent' },
+    { value: 'terraform_generator_agent', name: 'Terraform Generator Agent' },
   ];
 
   const getAgentName = (value) => {
     const agent = agents.find((a) => a.value === value);
-    return agent ? agent.name : 'Auto';
+    return agent ? agent.name : 'Default';
   };
 
   return (
