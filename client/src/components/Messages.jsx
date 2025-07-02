@@ -542,7 +542,20 @@ const Messages = () => {
   };
 
   const renderTerraformResponse = (msg) => {
-    return <TerraformViewer files={msg?.response_metadata?.details} />;
+    if (msg?.response_metadata?.details?.terraform_files !== null) {
+      return (
+        <>
+          <ReactMarkdown>{msg.content}</ReactMarkdown>
+          {/* <TerraformViewer files={msg?.response_metadata?.details} /> */}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <ReactMarkdown>{msg.content}</ReactMarkdown>
+      </>
+    );
   };
 
   const renderGeneralResponse = (msg) => {
@@ -565,7 +578,8 @@ const Messages = () => {
                 />
                 <div className="flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
                   <div>
-                    {msg.response_metadata?.agent === 'general_agent' && renderGeneralResponse(msg)}
+                    {msg.response_metadata?.agent === 'general_agent' &&
+                      renderGeneralResponse(msg)}
                     {msg.response_metadata?.agent ===
                       'terraform_generator_agent' &&
                       renderTerraformResponse(msg)}

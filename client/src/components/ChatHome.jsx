@@ -51,25 +51,23 @@ const ChatHome = () => {
 
   return (
     <div className="flex h-full w-full">
-      <div className="w-64 flex-shrink-0">
-        <SideBar />
-      </div>
-
       {currentChatId !== null ? (
         <div className="flex-1 flex flex-col h-[97vh] w-full">
           <Messages />
-
           <form
             className="bg-slate-200 p-2 rounded-2xl mt-2 relative"
             onSubmit={handleSubmit}
           >
             <div className="relative flex flex-col gap-2 px-2">
-
               <div className="relative">
                 {message === '' && (
                   <div className="absolute left-2 top-2 text-slate-500 pointer-events-none text-sm sm:text-base">
                     <Typewriter
-                      words={['Ask me about cloud related questions', 'Show me some recommendations for my Database', 'I want to provision a load balancer']}
+                      words={[
+                        'Ask me about cloud related questions',
+                        'Show me some recommendations for my Database',
+                        'I want to provision a load balancer',
+                      ]}
                       loop={true}
                       cursor
                       cursorStyle=".."
@@ -87,7 +85,7 @@ const ChatHome = () => {
                   required
                   value={message}
                   onChange={(e) => {
-                    setMessage(e.target.value)
+                    setMessage(e.target.value);
                   }}
                   disabled={messageSentLoading}
                   onKeyDown={handleKeyDown}

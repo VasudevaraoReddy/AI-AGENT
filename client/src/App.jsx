@@ -12,6 +12,8 @@ import CSPSelection from './components/CSPSelection';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 import './App.css';
+import TerraformCodeHomePage from './components/TerraformCodeBlock/TerraformCodeHomePage';
+import ChatHome from './components/ChatHome';
 
 function App() {
   return (
@@ -21,8 +23,16 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedRoute />}>
+          {/* <Route element={<ProtectedRoute />}>
             <Route path="/home" element={<Home />} />
+            <Route path="/select-csp" element={<CSPSelection />} />
+            <Route path="/terraform" element={<TerraformCodeHomePage />} />
+          </Route> */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/home" element={<Home />}>
+              <Route index element={<ChatHome />} />
+              <Route path="terraform" element={<TerraformCodeHomePage />} />
+            </Route>
             <Route path="/select-csp" element={<CSPSelection />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
