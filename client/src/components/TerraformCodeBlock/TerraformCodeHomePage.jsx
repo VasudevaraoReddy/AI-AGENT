@@ -30,7 +30,7 @@ const TerraformCodeHomePage = () => {
     : [];
 
   return (
-    <div className="w-full p-4">
+    <div className="w-full p-4 overflow-y-auto">
       <h2 className="text-2xl font-bold mb-4">Terraform Records</h2>
 
       <div className="w-full overflow-x-auto shadow-md sm:rounded-lg mb-6">
@@ -38,13 +38,16 @@ const TerraformCodeHomePage = () => {
           <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
             <tr>
               <th scope="col" className="px-6 py-3">
-                User ID
+                Input
               </th>
               <th scope="col" className="px-6 py-3">
                 Cloud
               </th>
               <th scope="col" className="px-6 py-3">
                 Resource
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Generation time
               </th>
               <th scope="col" className="px-6 py-3">
                 Timestamp
@@ -64,17 +67,22 @@ const TerraformCodeHomePage = () => {
                   scope="row"
                   className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
                 >
-                  {record.userid}
+                  {record.userInput}
                 </th>
-                <td className="px-6 py-4">{record.csp}</td>
+                <td className="px-6 py-4">{record.csp?.toUpperCase()}</td>
                 <td className="px-6 py-4">{record.resource_type}</td>
+                <td className="px-6 py-4">
+                  {record?.['generation_time_ms']
+                    ? `${Math.round(record?.['generation_time_ms']/1000)} ${' '}ms`
+                    : '-'}
+                </td>
                 <td className="px-6 py-4">
                   {new Date(record.timestamp).toLocaleString()}
                 </td>
                 <td className="px-6 py-4">
                   <button
                     onClick={() => handleViewCode(record)}
-                    className="font-medium text-blue-600 dark:text-blue-500 hover:underline"
+                    className="cursor-pointer font-medium text-[#2e2e38] hover:underline"
                   >
                     View Code
                   </button>
@@ -86,8 +94,8 @@ const TerraformCodeHomePage = () => {
       </div>
 
       {selectedRecord && (
-        <div className='pb-4'>
-          <h3 className="text-xl font-semibold mb-3">Terraform Code Preview</h3>
+        <div className="pb-4">
+          <h3 className="text-xl font-semibold mb-3">Code Preview for {selectedRecord?.resource_type}</h3>
 
           {/* File Tabs */}
           <div className="flex space-x-2 mb-2">
@@ -97,7 +105,7 @@ const TerraformCodeHomePage = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2 rounded ${
                   activeTab === tab
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#2e2e38] text-white'
                     : 'bg-gray-200 text-black'
                 }`}
               >

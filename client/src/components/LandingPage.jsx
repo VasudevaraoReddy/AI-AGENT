@@ -16,7 +16,7 @@ const LandingPage = () => {
               <Typewriter
                 words={[
                   // 'Your AI Cloud Assistant',
-                  'CloudMind Agent',
+                  'Multi Agent',
                 ]}
                 loop={1}
                 cursor

@@ -46,7 +46,7 @@ const Login = () => {
       <div className="max-w-md w-full space-y-8 bg-[#ffffff] p-8 rounded-xl shadow-lg">
         <div>
           <h2 className="text-center text-3xl font-bold text-[#333333]">
-            Welcome to CloudMind
+            Welcome to Multi
           </h2>
           <p className="mt-2 text-center text-[#999999]">
             Sign in to your account

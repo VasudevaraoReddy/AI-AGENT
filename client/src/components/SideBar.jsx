@@ -133,7 +133,7 @@ const SideBar = ({ path }) => {
               className="px-5 text-sm text-slate-500 dark:text-slate-400"
               style={{ fontSize: '12px' }}
             >
-              CloudMind Agent
+              Multi Agent
             </p>
           </div>
         </div>

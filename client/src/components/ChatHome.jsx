@@ -135,7 +135,7 @@ const ChatHome = () => {
         <>
           <div className="flex-1 flex flex-col items-center justify-center text-center text-white bg-[#2e2e38] px-4">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              <span className="text-[#ffe600]">CloudMind</span> Agent
+              <span className="text-[#ffe600]">Multi</span> Agent
             </h1>
             <div className="text-lg md:text-xl max-w-2xl">
               <ChatLandingPage />
