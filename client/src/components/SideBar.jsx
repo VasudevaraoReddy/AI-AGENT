@@ -144,7 +144,7 @@ const SideBar = ({ path }) => {
               onClick={() => {
                 navigate('/home');
               }}
-              className="border mt-2 cursor-pointer flex w-full gap-x-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-200 dark:hover:bg-slate-800"
+              className="border mt-2 text-center cursor-pointer w-full rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Back to Chat Interface
             </button>

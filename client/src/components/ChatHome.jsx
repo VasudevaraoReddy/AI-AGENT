@@ -42,6 +42,7 @@ const ChatHome = () => {
     { value: 'provision_agent', name: 'Provision Agent' },
     { value: 'recommendations_agent', name: 'Recommendation Agent' },
     { value: 'terraform_generator_agent', name: 'Terraform Generator Agent' },
+    { value: 'finops_agent', name: 'FinOps Agent' },
   ];
 
   const getAgentName = (value) => {

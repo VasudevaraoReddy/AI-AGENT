@@ -314,6 +314,7 @@ const Messages = () => {
   const [useSuggestedValues, setUseSuggestedValues] = useState(false);
   const [formState, setFormState] = useState({});
   const [deployedServices, setDeployedServices] = useState(new Set());
+  const [deployBtnLoading, setDeployBtnLoading] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -353,6 +354,7 @@ const Messages = () => {
   }, [chatHistory]);
 
   const handleDeploy = async (service) => {
+    setDeployBtnLoading(true);
     const serviceDeploymentId = service[0]?.serviceDeploymentId;
     const payload = {
       formData: formState?.[`form-${serviceDeploymentId}`],
@@ -367,10 +369,18 @@ const Messages = () => {
       (prev) => new Set([...prev, service[0].serviceDeploymentId]),
     );
 
-    await sendMessage({
+    const res = await sendMessage({
       message: `Go ahead and deploy with provided values`,
       payload: payload,
     });
+
+    if (
+      res?.messages?.[res?.messages.length - 1]?.response_metadata?.isDeployed
+    ) {
+      setDeployBtnLoading(false);
+    }
+
+    console.log(res, 'VVV');
   };
 
   const renderForm = (service, messageIndex) => {
@@ -470,7 +480,7 @@ const Messages = () => {
             </div>
           ))}
 
-          {!messageSentLoading && (
+          {!deployBtnLoading && (
             <label className="space-x-2">
               <input
                 type="checkbox"
@@ -495,10 +505,10 @@ const Messages = () => {
 
           <button
             type="submit"
-            disabled={messageSentLoading}
+            disabled={deployBtnLoading}
             className="cursor-pointer mt-2 rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {messageSentLoading ? 'Deploying...' : 'Deploy'}
+            {deployBtnLoading ? 'Deploying...' : 'Deploy'}
           </button>
         </form>
       );
@@ -579,6 +589,8 @@ const Messages = () => {
                 <div className="flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl">
                   <div>
                     {msg.response_metadata?.agent === 'general_agent' &&
+                      renderGeneralResponse(msg)}
+                    {msg.response_metadata?.agent === 'finops_agent' &&
                       renderGeneralResponse(msg)}
                     {msg.response_metadata?.agent ===
                       'terraform_generator_agent' &&
