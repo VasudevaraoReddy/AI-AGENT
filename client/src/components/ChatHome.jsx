@@ -5,6 +5,7 @@ import Messages from './Messages';
 import { SendHorizontal } from 'lucide-react';
 import ChatLandingPage from './ChatLandingPage';
 import { Typewriter } from 'react-simple-typewriter';
+import toast, { Toaster } from 'react-hot-toast';
 
 const ChatHome = () => {
   const {
@@ -19,28 +20,35 @@ const ChatHome = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
-
-    try {
-      await sendMessage(message);
-      setMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
+    if(message === ''){
+      toast.error("Enter Message");
     }
+    else{
+      if (!message.trim()) return;
+
+      try {
+        await sendMessage(message);
+        setMessage('');
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    }
+    
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent newline
-      handleSubmit(e);
+      e.preventDefault(); // prevent newline
+      e.stopPropagation(); // prevent bubbling to form
+      handleSubmit(e); // manually trigger
     }
   };
-
+  
   const agents = [
     { value: '', name: 'Auto' },
     { value: 'general_agent', name: 'General Agent' },
     { value: 'provision_agent', name: 'Provision Agent' },
-    { value: 'recommendations_agent', name: 'Recommendation Agent' },
+    { value: 'recommendation_agent', name: 'Recommendation Agent' },
     { value: 'terraform_generator_agent', name: 'Terraform Generator Agent' },
     { value: 'finops_agent', name: 'FinOps Agent' },
   ];
@@ -57,7 +65,6 @@ const ChatHome = () => {
           <Messages />
           <form
             className="bg-slate-200 p-2 rounded-2xl mt-2 relative"
-            onSubmit={handleSubmit}
           >
             <div className="relative flex flex-col gap-2 px-2">
               <div className="relative">
@@ -123,7 +130,8 @@ const ChatHome = () => {
                 </div>
                 <button
                   className="cursor-pointer"
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   disabled={messageSentLoading}
                 >
                   <SendHorizontal />

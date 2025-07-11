@@ -597,7 +597,7 @@ const Messages = () => {
                       renderTerraformResponse(msg)}
                     {msg?.response_metadata?.agent === 'provision_agent' &&
                       renderProvisioningResponse(msg, index)}
-                    {msg.response_metadata?.agent === 'recommendations_agent' &&
+                    {msg.response_metadata?.agent === 'recommendation_agent' &&
                       renderRecommendationsResponse(msg)}
                   </div>
                 </div>
