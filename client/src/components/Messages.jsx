@@ -525,7 +525,7 @@ const Messages = () => {
       agent?.includes('provision_agent') && details?.serviceConfig?.length > 0;
 
     const shouldRenderPipeline =
-      agent?.includes('provision_agent') && details?.devOpsResponse;
+      agent?.includes('provision_agent') && details?.devOpsResponse && Object.keys(details?.devOpsResponse).length > 0;
 
     // Removed the state update from here - it's now handled in useEffect
 
